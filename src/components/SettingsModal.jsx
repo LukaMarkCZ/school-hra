@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Key,
   Volume2,
   RotateCcw,
   Check,
@@ -10,10 +9,9 @@ import {
   AlertTriangle,
   Loader2,
   Tablet,
-  Mic,
   Play,
   Square,
-  Radio
+  Trash2
 } from 'lucide-react';
 import { speech, testTTSPreview } from '../services/speechEngine';
 import { sounds } from '../services/soundEffects';
@@ -54,7 +52,6 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
     }
   }, []);
 
-  // Save changes automatically
   const handleUpdateName = (val) => {
     setCurrentName(val);
     if (onUpdatePlayerName) onUpdatePlayerName(val.trim() || 'Terezka');
@@ -70,6 +67,12 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
     setGeminiTestResult(null);
   };
 
+  const handleClearGemini = () => {
+    setGeminiKey('');
+    localStorage.removeItem('gemini_api_key');
+    setGeminiTestResult({ ok: false, message: 'Gemini klíč byl smazán.' });
+  };
+
   const handleOpenAIKeyChange = (val) => {
     setOpenAIKey(val);
     if (val.trim()) {
@@ -80,9 +83,16 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
     setOpenAITestResult(null);
   };
 
+  const handleClearOpenAI = () => {
+    setOpenAIKey('');
+    localStorage.removeItem('openai_api_key');
+    setOpenAITestResult({ ok: false, message: 'OpenAI klíč byl smazán.' });
+  };
+
   const handleTtsProviderChange = (provider) => {
     setTtsProvider(provider);
     localStorage.setItem('tts_provider', provider);
+    setPreviewError('');
   };
 
   const handleElevenLabsKeyChange = (val) => {
@@ -110,7 +120,7 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
     if (e) e.preventDefault();
     const key = geminiKey.trim();
     if (!key) {
-      setGeminiTestResult({ ok: false, message: 'Nejprve zadejte klíč.' });
+      setGeminiTestResult({ ok: false, message: 'Nejprve zadejte Gemini klíč.' });
       return;
     }
     setIsTestingGemini(true);
@@ -118,9 +128,9 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
     const res = await testGeminiAPI(key);
     setIsTestingGemini(false);
     if (res.ok) {
-      setGeminiTestResult({ ok: true, message: 'Google Gemini je úspěšně připojeno!' });
+      setGeminiTestResult({ ok: true, message: res.message });
     } else {
-      setGeminiTestResult({ ok: false, message: `Chyba: ${res.error}` });
+      setGeminiTestResult({ ok: false, message: res.error });
     }
   };
 
@@ -137,9 +147,9 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
     const res = await testOpenAIAPI(key);
     setIsTestingOpenAI(false);
     if (res.ok) {
-      setOpenAITestResult({ ok: true, message: 'OpenAI (GPT-4o) je úspěšně připojeno!' });
+      setOpenAITestResult({ ok: true, message: res.message });
     } else {
-      setOpenAITestResult({ ok: false, message: `Chyba: ${res.error}` });
+      setOpenAITestResult({ ok: false, message: res.error });
     }
   };
 
@@ -171,7 +181,7 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
       onStart: () => setIsPlayingPreview(true),
       onEnd: () => setIsPlayingPreview(false),
       onError: (err) => {
-        setPreviewError(`Chyba hlasové služby: ${err}`);
+        setPreviewError(err);
         setIsPlayingPreview(false);
       }
     });
@@ -183,6 +193,8 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
       characterId: student.id
     });
   };
+
+  const isOpenAIWithCreditError = openAITestResult && !openAITestResult.ok && openAITestResult.message.includes('kredit');
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -211,7 +223,7 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
           <p className="settings-desc">
             Tímto jménem tě bude Paní učitelka i celá třída oslovovat, vyvolávat a psát ti ho do žákovské knížky:
           </p>
-          <div className="flex gap-2 mt-2">
+          <div style={{ marginTop: '8px' }}>
             <input
               type="text"
               value={currentName}
@@ -229,125 +241,114 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
             <h3>Přirozený hlas paní učitelky (Hlasová služba TTS)</h3>
           </div>
           <p className="settings-desc">
-            Pokud paní učitelka zní roboticky, je to proto, že počítač používá starý systémový hlas. Můžete zde přepnout na <strong>nádherný lidský hlas s přirozenou intonací a dechem</strong>:
+            Pokud paní učitelka zní roboticky, je to způsobeno starým systémovým hlasem v počítači. Zde můžete přepnout na <strong>nádherný lidský hlas s přirozenou intonací a dechem</strong>:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+          <div className="settings-provider-grid">
             {/* OpenAI TTS Option */}
-            <button
-              type="button"
-              className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                ttsProvider === 'openai' || (ttsProvider === 'auto' && openAIKey)
-                  ? 'border-indigo-600 bg-indigo-50/80 shadow-md ring-2 ring-indigo-400'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
-              }`}
+            <div
+              className={`settings-provider-card ${ttsProvider === 'openai' || (ttsProvider === 'auto' && openAIKey && !isOpenAIWithCreditError) ? 'active' : ''}`}
               onClick={() => handleTtsProviderChange('openai')}
             >
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-indigo-950 text-sm">🎙️ OpenAI TTS</span>
-                  <span className="text-[10px] bg-indigo-200 text-indigo-900 font-bold px-1.5 py-0.5 rounded">Doporučeno</span>
+                <div className="settings-card-top-row">
+                  <span className="settings-card-title">🎙️ OpenAI TTS</span>
+                  <span className="settings-card-badge">Doporučeno</span>
                 </div>
-                <p className="text-xs text-slate-600">
+                <p className="settings-card-desc">
                   Přirozený lidský ženský hlas <strong>Nova</strong>. Zní jako skutečná mladá usměvavá paní učitelka.
                 </p>
               </div>
-            </button>
+            </div>
 
             {/* ElevenLabs Option */}
-            <button
-              type="button"
-              className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                ttsProvider === 'elevenlabs' || (ttsProvider === 'auto' && elevenLabsKey && !openAIKey)
-                  ? 'border-emerald-600 bg-emerald-50/80 shadow-md ring-2 ring-emerald-400'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
-              }`}
+            <div
+              className={`settings-provider-card ${ttsProvider === 'elevenlabs' || (ttsProvider === 'auto' && elevenLabsKey) ? 'active' : ''}`}
               onClick={() => handleTtsProviderChange('elevenlabs')}
             >
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-emerald-950 text-sm">🌟 ElevenLabs AI</span>
-                  <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">Ultra Realistický</span>
+                <div className="settings-card-top-row">
+                  <span className="settings-card-title">🌟 ElevenLabs</span>
+                  <span className="settings-card-badge badge-green">Ultra Realistický</span>
                 </div>
-                <p className="text-xs text-slate-600">
+                <p className="settings-card-desc">
                   Špičkový hyper-realistický AI model <strong>Multilingual v2</strong> s českou intonací.
                 </p>
               </div>
-            </button>
+            </div>
 
             {/* Local Web Speech Option */}
-            <button
-              type="button"
-              className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                ttsProvider === 'webspeech' || (ttsProvider === 'auto' && !openAIKey && !elevenLabsKey)
-                  ? 'border-sky-600 bg-sky-50/80 shadow-md ring-2 ring-sky-400'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
-              }`}
+            <div
+              className={`settings-provider-card ${ttsProvider === 'webspeech' || (ttsProvider === 'auto' && !openAIKey && !elevenLabsKey) || isOpenAIWithCreditError ? 'active' : ''}`}
               onClick={() => handleTtsProviderChange('webspeech')}
             >
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-sky-950 text-sm">🌐 Vestavěný v PC/mobilu</span>
-                  <span className="text-[10px] bg-sky-200 text-sky-900 font-bold px-1.5 py-0.5 rounded">Zdarma offline</span>
+                <div className="settings-card-top-row">
+                  <span className="settings-card-title">🌐 Hlas v zařízení</span>
+                  <span className="settings-card-badge badge-blue">Zdarma offline</span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Hlas z Windows (Edge Vlasta/Jakub) nebo iOS (Zuzana/Siri). Nevyžaduje internet ani klíč.
+                <p className="settings-card-desc">
+                  Hlas z Windows (Edge Vlasta/Jakub) nebo iOS (Zuzana/Siri). Nevyžaduje internet ani kredit.
                 </p>
               </div>
-            </button>
+            </div>
           </div>
 
           {/* Provider Details & Config */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl mt-3 space-y-3">
+          <div className="settings-config-box">
             {(ttsProvider === 'openai' || (ttsProvider === 'auto' && openAIKey)) && (
               <div>
-                <label className="text-xs font-extrabold text-slate-800 block mb-1">
-                  Hlas OpenAI:
+                <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1E293B', display: 'block', marginBottom: '4px' }}>
+                  Hlas OpenAI pro paní učitelku:
                 </label>
-                <div className="flex items-center gap-3">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <select
                     value={openAIVoice}
                     onChange={(e) => handleOpenAIVoiceChange(e.target.value)}
-                    className="p-2 text-sm border border-slate-300 rounded-lg bg-white font-bold text-slate-800"
+                    className="settings-select-input"
+                    style={{ maxWidth: '280px' }}
                   >
                     <option value="nova">Nova (Teplý, milý, mateřský paní učitelky)</option>
                     <option value="shimmer">Shimmer (Jemný, melodický ženský)</option>
                     <option value="alloy">Alloy (Čistý, neutrální)</option>
                   </select>
-                  <span className="text-xs text-slate-500">
+                  <span style={{ fontSize: '0.78rem', color: '#64748B' }}>
                     Klíč se zadává v sekci OpenAI níže.
                   </span>
                 </div>
+                {isOpenAIWithCreditError && (
+                  <div className="settings-test-msg msg-err" style={{ marginTop: '8px' }}>
+                    ⚠️ Váš OpenAI účet nemá kredit. Pro vyzkoušení hlasu přepněte na <strong>„Hlas v zařízení“</strong> výše.
+                  </div>
+                )}
               </div>
             )}
 
             {(ttsProvider === 'elevenlabs' || (ttsProvider === 'auto' && elevenLabsKey)) && (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs font-extrabold text-slate-800 block mb-1">
-                    Váš ElevenLabs API klíč:
-                  </label>
-                  <input
-                    type="password"
-                    value={elevenLabsKey}
-                    onChange={(e) => handleElevenLabsKeyChange(e.target.value)}
-                    placeholder="Vložte sem ElevenLabs klíč..."
-                    className="key-input-field text-sm"
-                  />
-                </div>
+              <div>
+                <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1E293B', display: 'block', marginBottom: '4px' }}>
+                  Váš ElevenLabs API klíč:
+                </label>
+                <input
+                  type="password"
+                  value={elevenLabsKey}
+                  onChange={(e) => handleElevenLabsKeyChange(e.target.value)}
+                  placeholder="Vložte sem ElevenLabs klíč..."
+                  className="settings-input-key"
+                />
               </div>
             )}
 
-            {(ttsProvider === 'webspeech' || (!openAIKey && !elevenLabsKey)) && (
+            {(ttsProvider === 'webspeech' || (!openAIKey && !elevenLabsKey) || isOpenAIWithCreditError) && (
               <div>
-                <label className="text-xs font-extrabold text-slate-800 block mb-1">
+                <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1E293B', display: 'block', marginBottom: '4px' }}>
                   Vyberte český hlas z vašeho zařízení:
                 </label>
                 {availableWebVoices.length > 0 ? (
                   <select
                     value={selectedWebVoice}
                     onChange={(e) => handleWebVoiceChange(e.target.value)}
-                    className="p-2 text-sm border border-slate-300 rounded-lg bg-white font-bold text-slate-800 w-full"
+                    className="settings-select-input"
                   >
                     {availableWebVoices.map((v) => (
                       <option key={v.voiceURI || v.name} value={v.voiceURI || v.name}>
@@ -356,18 +357,19 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
                     ))}
                   </select>
                 ) : (
-                  <span className="text-xs text-amber-800 font-bold block">
+                  <span style={{ fontSize: '0.8rem', color: '#92400E', fontWeight: 700, display: 'block' }}>
                     V systému zatím nebyl detekován žádný specifický český hlas, použije se výchozí.
                   </span>
                 )}
-                <span className="text-[11px] text-slate-500 block mt-1">
-                  Tip: V prohlížeči <strong>Microsoft Edge</strong> jsou zdarma k dispozici přirozené lidské hlasy <em>Microsoft Vlasta Online</em> a <em>Antonin Online</em>.
-                </span>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', lineHeight: 1.4 }}>
+                  <div>💡 <strong>Na iPadu/iPhonu:</strong> V <em>Nastavení iPadu → Zpřístupnění → Předčítání obsahu → Hlasy → Čeština</em> stáhněte rozšířený hlas <strong>Zuzana / Siri</strong> pro krásný lidský tón.</div>
+                  <div>💡 <strong>Na PC:</strong> V prohlížeči <strong>Microsoft Edge</strong> jsou zdarma k dispozici přirozené lidské hlasy <em>Microsoft Vlasta Online</em> a <em>Antonin Online</em>.</div>
+                </div>
               </div>
             )}
 
             {/* Test Voice Button */}
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+            <div style={{ paddingTop: '8px', borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <button
                 type="button"
                 className="btn-play-voice-preview"
@@ -386,13 +388,13 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
                 )}
               </button>
 
-              <span className="text-xs font-bold text-slate-600">
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>
                 Aktivní: {speech.getActiveVoiceName()}
               </span>
             </div>
 
             {previewError && (
-              <div className="p-2 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800 font-bold">
+              <div className="settings-test-msg msg-err">
                 {previewError}
               </div>
             )}
@@ -409,47 +411,62 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
             S připojeným LLM modelem paní učitelka <strong>nikdy neopakuje stejné odpovědi</strong> a reaguje živě, vtipně a mateřsky na jakékoliv dětské nápady:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          <div className="settings-ai-grid">
             {/* Google Gemini Card */}
-            <div className="p-3 bg-white border border-indigo-200 rounded-xl shadow-sm flex flex-col justify-between">
+            <div className="settings-ai-card card-gemini">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-indigo-950 text-sm">Google Gemini AI</span>
-                  <span className="text-[10px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.5 rounded">Zcela zdarma</span>
+                <div className="settings-card-top-row">
+                  <span className="settings-card-title">Google Gemini AI</span>
+                  <span className="settings-card-badge badge-green">Zcela zdarma</span>
                 </div>
-                <p className="text-xs text-slate-600 mb-2">
-                  Model <strong>Gemini 2.0 Flash</strong> od Google. Klíč získáte zdarma jedním kliknutím:
+                <p className="settings-card-desc" style={{ marginBottom: '8px' }}>
+                  Model <strong>Gemini 1.5 / 2.0 Flash</strong> od Google. Klíč získáte zdarma jedním kliknutím:
                 </p>
-                <a
-                  href="https://aistudio.google.com/app/apikey"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-indigo-600 underline font-bold flex items-center mb-2"
-                >
-                  <span>Získat bezplatný klíč v Google AI Studio</span>
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </a>
+                <div>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="settings-link-row"
+                  >
+                    <span>Získat bezplatný klíč v Google AI Studio</span>
+                    <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                  </a>
+                </div>
                 <input
                   type="password"
                   value={geminiKey}
                   onChange={(e) => handleGeminiKeyChange(e.target.value)}
                   placeholder="Vložte sem klíč (začíná AIzaSy...)"
-                  className="key-input-field text-xs mb-2"
+                  className="settings-input-key"
                 />
               </div>
 
               <div>
-                <button
-                  type="button"
-                  className="btn-save-key text-xs py-1.5 w-full justify-center"
-                  onClick={handleTestGemini}
-                  disabled={isTestingGemini}
-                >
-                  {isTestingGemini ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
-                  <span>Otestovat Gemini AI</span>
-                </button>
+                <div className="settings-buttons-row">
+                  <button
+                    type="button"
+                    className="settings-btn-test"
+                    onClick={handleTestGemini}
+                    disabled={isTestingGemini}
+                  >
+                    {isTestingGemini ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                    <span>Otestovat Gemini AI</span>
+                  </button>
+                  {geminiKey && (
+                    <button
+                      type="button"
+                      className="settings-btn-clear"
+                      onClick={handleClearGemini}
+                      title="Smazat klíč"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
                 {geminiTestResult && (
-                  <div className={`mt-1.5 text-xs font-bold p-1.5 rounded ${geminiTestResult.ok ? 'bg-emerald-50 text-emerald-900' : 'bg-rose-50 text-rose-900'}`}>
+                  <div className={`settings-test-msg ${geminiTestResult.ok ? 'msg-ok' : 'msg-err'}`}>
                     {geminiTestResult.message}
                   </div>
                 )}
@@ -457,45 +474,60 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
             </div>
 
             {/* OpenAI Card */}
-            <div className="p-3 bg-white border border-slate-300 rounded-xl shadow-sm flex flex-col justify-between">
+            <div className="settings-ai-card card-openai">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-slate-900 text-sm">OpenAI (ChatGPT / GPT-4o)</span>
-                  <span className="text-[10px] bg-slate-200 text-slate-900 font-bold px-1.5 py-0.5 rounded">Špičková čeština</span>
+                <div className="settings-card-top-row">
+                  <span className="settings-card-title">OpenAI (ChatGPT / GPT-4o)</span>
+                  <span className="settings-card-badge">Špičková čeština</span>
                 </div>
-                <p className="text-xs text-slate-600 mb-2">
-                  Model <strong>GPT-4o-mini</strong>. Tento klíč zároveň pohání i přirozený hlas Nova:
+                <p className="settings-card-desc" style={{ marginBottom: '8px' }}>
+                  Model <strong>GPT-4o-mini</strong> a přirozený hlas <strong>Nova</strong>:
                 </p>
-                <a
-                  href="https://platform.openai.com/api-keys"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-slate-700 underline font-bold flex items-center mb-2"
-                >
-                  <span>Získat OpenAI API klíč</span>
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </a>
+                <div>
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="settings-link-row"
+                  >
+                    <span>Získat OpenAI API klíč</span>
+                    <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                  </a>
+                </div>
                 <input
                   type="password"
                   value={openAIKey}
                   onChange={(e) => handleOpenAIKeyChange(e.target.value)}
                   placeholder="Vložte sem klíč (začíná sk-...)"
-                  className="key-input-field text-xs mb-2"
+                  className="settings-input-key"
                 />
               </div>
 
               <div>
-                <button
-                  type="button"
-                  className="btn-save-key text-xs py-1.5 w-full justify-center bg-slate-800 hover:bg-slate-900"
-                  onClick={handleTestOpenAI}
-                  disabled={isTestingOpenAI}
-                >
-                  {isTestingOpenAI ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
-                  <span>Otestovat OpenAI</span>
-                </button>
+                <div className="settings-buttons-row">
+                  <button
+                    type="button"
+                    className="settings-btn-test btn-openai"
+                    onClick={handleTestOpenAI}
+                    disabled={isTestingOpenAI}
+                  >
+                    {isTestingOpenAI ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                    <span>Otestovat OpenAI</span>
+                  </button>
+                  {openAIKey && (
+                    <button
+                      type="button"
+                      className="settings-btn-clear"
+                      onClick={handleClearOpenAI}
+                      title="Smazat klíč"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
                 {openAITestResult && (
-                  <div className={`mt-1.5 text-xs font-bold p-1.5 rounded ${openAITestResult.ok ? 'bg-emerald-50 text-emerald-900' : 'bg-rose-50 text-rose-900'}`}>
+                  <div className={`settings-test-msg ${openAITestResult.ok ? 'msg-ok' : 'msg-err'}`}>
                     {openAITestResult.message}
                   </div>
                 )}
@@ -503,18 +535,18 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
             </div>
           </div>
 
-          <div className="status-badge-box mt-3">
-            {openAIKey ? (
+          <div className="settings-badge-status">
+            {openAIKey && openAITestResult?.ok ? (
               <span className="status-tag status-ai">
-                ✨ Aktivní mozek: OpenAI GPT-4o (Maximálně přirozená čeština a vřelost)
+                ✨ Aktivní mozek: OpenAI GPT-4o-mini (Maximálně přirozená čeština a vřelost)
               </span>
-            ) : geminiKey ? (
+            ) : geminiKey && (!geminiTestResult || geminiTestResult.ok) ? (
               <span className="status-tag status-ai">
                 ✨ Aktivní mozek: Google Gemini AI (Chytré živé odpovědi)
               </span>
             ) : (
               <span className="status-tag status-offline">
-                ⚡ Offline režim s pestrou bankou lidských vět (paní učitelka se neopakuje)
+                ⚡ Aktivní mozek: Vestavěný offline mozek s pestrou bankou (60+ lidských vět bez opakování)
               </span>
             )}
           </div>
@@ -530,18 +562,29 @@ export function SettingsModal({ onClose, onResetDay, students, playerName = 'Ter
             Na iPadu nebo mobilu v Safari / Chrome otevřete tuto oficiální zabezpečenou adresu (obsahuje zelený zámeček, mikrofon funguje bez varování):
           </p>
 
-          <div className="mt-2 p-3 bg-emerald-50 border border-emerald-300 rounded-xl">
-            <div className="flex items-center gap-2 mb-2">
+          <div style={{ marginTop: '8px', padding: '12px 14px', background: '#ECFDF5', border: '1.5px solid #6EE7B7', borderRadius: '14px' }}>
+            <div style={{ marginBottom: '8px' }}>
               <a
                 href="https://lukamarkcz.github.io/school-hra/"
                 target="_blank"
                 rel="noreferrer"
-                className="text-base bg-white px-3 py-1.5 rounded-lg border border-emerald-400 font-mono text-emerald-950 font-black underline select-all"
+                style={{
+                  fontSize: '0.95rem',
+                  background: '#FFFFFF',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #10B981',
+                  fontFamily: 'monospace',
+                  color: '#064E3B',
+                  fontWeight: 900,
+                  textDecoration: 'underline',
+                  display: 'inline-block'
+                }}
               >
                 https://lukamarkcz.github.io/school-hra/
               </a>
             </div>
-            <div className="flex items-start gap-2 text-xs text-emerald-900 bg-white/70 p-2.5 rounded-lg border border-emerald-200">
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '0.78rem', color: '#065F46', background: 'rgba(255,255,255,0.7)', padding: '10px', borderRadius: '8px' }}>
               <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
               <span>
                 <strong>Jak mluvit:</strong> V okně odpovědi se mikrofon sám zapne a jakmile dcera domluví, odpověď se sama automaticky odešle paní učitelce bez jakéhokoliv dalšího klikání!

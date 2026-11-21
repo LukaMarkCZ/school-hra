@@ -28,8 +28,8 @@ export function isAIConfigured() {
 
 // List of preferred models in order of priority (using Google AI Studio's active models)
 const GEMINI_MODELS = [
-  'gemini-2.0-flash',
   'gemini-1.5-flash',
+  'gemini-2.0-flash',
   'gemini-2.5-flash',
   'gemini-flash-latest'
 ];
@@ -41,7 +41,7 @@ export async function testOpenAIAPI(key) {
 
   const endpoint = 'https://api.openai.com/v1/chat/completions';
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 7500);
+  const timer = setTimeout(() => controller.abort(), 12000);
 
   try {
     const res = await fetch(endpoint, {
@@ -66,10 +66,17 @@ export async function testOpenAIAPI(key) {
       return { ok: true, message: `Připojeno k OpenAI! Model: gpt-4o-mini. Odpověď: „${reply}“` };
     } else {
       const errData = await res.json().catch(() => null);
-      return { ok: false, error: errData?.error?.message || `Chyba HTTP ${res.status}` };
+      const msg = errData?.error?.message || `Chyba HTTP ${res.status}`;
+      if (msg.includes('no credits') || msg.includes('quota') || msg.includes('billing')) {
+        return {
+          ok: false,
+          error: 'Váš OpenAI účet nemá nabitý kredit (0 $). Dobijte kredit na platform.openai.com nebo použijte bezplatné Gemini / offline režim.'
+        };
+      }
+      return { ok: false, error: msg };
     }
   } catch (err) {
-    return { ok: false, error: err.name === 'AbortError' ? 'Vypršel časový limit (7s).' : (err.message || 'Chyba sítě.') };
+    return { ok: false, error: err.name === 'AbortError' ? 'Vypršel časový limit (12s).' : (err.message || 'Chyba sítě.') };
   }
 }
 
@@ -156,7 +163,7 @@ export async function testGeminiAPI(keyToTest) {
 
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 7000);
+      const timer = setTimeout(() => controller.abort(), 15000);
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -173,13 +180,17 @@ export async function testGeminiAPI(keyToTest) {
       if (res.ok) {
         const data = await res.json();
         const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Ahoj!';
-        return { ok: true, message: `Připojeno! Model: ${model}. Odpověď AI: „${reply}“` };
+        return { ok: true, message: `Google Gemini připojeno! Model: ${model}. Odpověď: „${reply}“` };
       } else {
         const errData = await res.json().catch(() => null);
         lastError = errData?.error?.message || `Chyba HTTP ${res.status}`;
       }
     } catch (err) {
-      lastError = err.name === 'AbortError' ? 'Vypršel časový limit (7s).' : (err.message || 'Chyba sítě.');
+      if (err.name === 'AbortError') {
+        lastError = 'Vypršel časový limit (15s). Pokud máte na zařízení zapnutou VPN, zkuste ji dočasně vypnout.';
+      } else {
+        lastError = err.message || 'Chyba sítě.';
+      }
     }
   }
 

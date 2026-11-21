@@ -108,6 +108,9 @@ export async function fetchOpenAITTS(text, apiKey, voice = 'nova') {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (errorText.includes('no credits') || errorText.includes('quota') || response.status === 429) {
+      throw new Error('Váš OpenAI účet nemá nabitý kredit (0 $). Dobijte kredit na platform.openai.com nebo přepněte na „Hlas v zařízení“.');
+    }
     throw new Error(`OpenAI TTS ${response.status}: ${errorText}`);
   }
 
