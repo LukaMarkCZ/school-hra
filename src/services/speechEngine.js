@@ -88,6 +88,62 @@ export function preprocessCzechForTTS(text) {
   return s;
 }
 
+// Cloud TTS API Functions for Natural Human Voices
+export async function fetchOpenAITTS(text, apiKey, voice = 'nova') {
+  if (!apiKey || !apiKey.trim()) throw new Error('Chybí OpenAI API klíč.');
+  const endpoint = 'https://api.openai.com/v1/audio/speech';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey.trim()}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'tts-1',
+      input: text,
+      voice: voice, // 'nova' is exceptionally natural, warm and maternal in Czech
+      response_format: 'mp3'
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI TTS ${response.status}: ${errorText}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
+export async function fetchElevenLabsTTS(text, apiKey, voiceId = '21m00Tcm4TlvDq8ikWAM') {
+  if (!apiKey || !apiKey.trim()) throw new Error('Chybí ElevenLabs API klíč.');
+  const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': apiKey.trim(),
+      'Content-Type': 'application/json',
+      'Accept': 'audio/mpeg'
+    },
+    body: JSON.stringify({
+      text: text,
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: {
+        stability: 0.55,
+        similarity_boost: 0.8
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ElevenLabs TTS ${response.status}: ${errorText}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 class SpeechEngine {
   constructor() {
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
@@ -97,6 +153,7 @@ class SpeechEngine {
     this.femaleVoice = null;
     this.maleVoice = null;
     this.currentUtterance = null;
+    this.activeAudio = null;
     this.isSpeaking = false;
     this.onSpeechStateChange = null;
 
@@ -108,12 +165,28 @@ class SpeechEngine {
     }
   }
 
+  getTTSProvider() {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('tts_provider')) || 'auto';
+  }
+
+  getOpenAIApiKey() {
+    const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_OPENAI_API_KEY) || '';
+    const localKey = (typeof localStorage !== 'undefined' && localStorage.getItem('openai_api_key')) || '';
+    return (envKey || localKey || '').trim();
+  }
+
+  getElevenLabsApiKey() {
+    const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ELEVENLABS_API_KEY) || '';
+    const localKey = (typeof localStorage !== 'undefined' && localStorage.getItem('elevenlabs_api_key')) || '';
+    return (envKey || localKey || '').trim();
+  }
+
   loadVoices() {
     if (!this.synth) return;
     this.voices = this.synth.getVoices() || [];
-    
+
     // Filter all Czech voices
-    const czechVoices = this.voices.filter(v => 
+    const czechVoices = this.voices.filter(v =>
       v.lang === 'cs-CZ' || v.lang === 'cs_CZ' || v.lang.startsWith('cs')
     );
 
@@ -121,14 +194,16 @@ class SpeechEngine {
     const scoreVoice = (v) => {
       let score = 0;
       const name = (v.name || '').toLowerCase();
-      if (name.includes('natural')) score += 100;
-      if (name.includes('neural')) score += 95;
-      if (name.includes('enhanced') || name.includes('premium')) score += 90;
-      if (name.includes('siri')) score += 85;
-      if (name.includes('online')) score += 50;
+      if (name.includes('natural')) score += 120;
+      if (name.includes('neural')) score += 110;
+      if (name.includes('enhanced') || name.includes('premium')) score += 100;
+      if (name.includes('siri')) score += 95;
+      if (name.includes('online')) score += 70;
+      if (name.includes('vlasta')) score += 60;
+      if (name.includes('antonin')) score += 55;
+      if (name.includes('zuzana') || name.includes('iveta')) score += 45;
       if (name.includes('google')) score += 40;
-      if (name.includes('zuzana')) score += 30;
-      if (name.includes('jakub') || name.includes('vlasta') || name.includes('jan')) score += 25;
+      if (name.includes('jakub') || name.includes('jan')) score += 15;
       if (v.lang === 'cs-CZ') score += 15;
       if (v.default) score += 5;
       return score;
@@ -137,7 +212,12 @@ class SpeechEngine {
     czechVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
 
     this.czechVoices = czechVoices;
-    this.czechVoice = czechVoices[0] || null;
+
+    // Check user preference
+    const preferredUri = typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_webspeech_voice') : '';
+    const userVoice = czechVoices.find(v => v.voiceURI === preferredUri || v.name === preferredUri);
+
+    this.czechVoice = userVoice || czechVoices[0] || null;
 
     // Distinguish Female vs Male Czech voices for boy / girl students
     this.femaleVoice = czechVoices.find(v => {
@@ -147,7 +227,7 @@ class SpeechEngine {
 
     this.maleVoice = czechVoices.find(v => {
       const n = (v.name || '').toLowerCase();
-      return n.includes('male') || n.includes('jakub') || n.includes('jan') || n.includes('michal') || n.includes('josef');
+      return n.includes('male') || n.includes('jakub') || n.includes('jan') || n.includes('michal') || n.includes('josef') || n.includes('antonin');
     }) || this.czechVoice;
   }
 
@@ -156,6 +236,17 @@ class SpeechEngine {
   }
 
   getActiveVoiceName() {
+    const provider = this.getTTSProvider();
+    const openAIKey = this.getOpenAIApiKey();
+    const elevenLabsKey = this.getElevenLabsApiKey();
+
+    if ((provider === 'openai' || (provider === 'auto' && openAIKey)) && openAIKey) {
+      const voice = (typeof localStorage !== 'undefined' && localStorage.getItem('openai_tts_voice')) || 'nova';
+      return `OpenAI TTS (Lidský hlas ${voice})`;
+    }
+    if ((provider === 'elevenlabs' || (provider === 'auto' && elevenLabsKey)) && elevenLabsKey) {
+      return `ElevenLabs AI (Multilingual v2)`;
+    }
     return this.czechVoice ? this.czechVoice.name : 'Výchozí systémový hlas';
   }
 
@@ -174,52 +265,123 @@ class SpeechEngine {
   }
 
   stop() {
+    if (this.activeAudio) {
+      try {
+        this.activeAudio.pause();
+        this.activeAudio.currentTime = 0;
+      } catch {}
+      this.activeAudio = null;
+    }
     if (this.keepAliveInterval) {
       clearInterval(this.keepAliveInterval);
       this.keepAliveInterval = null;
     }
-    if (!this.synth) return;
-    try {
-      this.synth.cancel();
-      this.isSpeaking = false;
-      if (this.onSpeechStateChange) {
-        this.onSpeechStateChange(false, null);
-      }
-    } catch {
-      // Ignored
+    if (this.synth) {
+      try {
+        this.synth.cancel();
+      } catch {}
+    }
+    this.isSpeaking = false;
+    if (this.onSpeechStateChange) {
+      this.onSpeechStateChange(false, null);
     }
   }
 
+  playAudioUrl(audioUrl, options = {}) {
+    this.stop();
+    const audio = new Audio(audioUrl);
+    this.activeAudio = audio;
+    this.isSpeaking = true;
+
+    if (this.onSpeechStateChange) {
+      this.onSpeechStateChange(true, options.characterId);
+    }
+    if (options.onStart) options.onStart();
+
+    const cleanup = () => {
+      this.isSpeaking = false;
+      this.activeAudio = null;
+      try { URL.revokeObjectURL(audioUrl); } catch {}
+      if (this.onSpeechStateChange) {
+        this.onSpeechStateChange(false, null);
+      }
+      if (options.onEnd) options.onEnd();
+    };
+
+    audio.onended = cleanup;
+    audio.onerror = (e) => {
+      console.warn('Audio playback error:', e);
+      cleanup();
+    };
+
+    audio.play().catch((err) => {
+      console.warn('Audio play was blocked/interrupted:', err);
+      cleanup();
+    });
+  }
+
   /**
-   * Speak Czech text with character-specific voice and pitch tuning
-   * @param {string} text - text to speak
-   * @param {Object} options - { characterId, pitch, rate, volume, onStart, onEnd }
+   * Speak Czech text with character-specific voice and pitch tuning.
+   * Seamlessly uses Cloud TTS (OpenAI / ElevenLabs) if configured, with graceful fallback to Web Speech.
    */
-  speak(text, options = {}) {
-    if (!this.synth || !text) {
+  async speak(text, options = {}) {
+    this.stop();
+
+    if (!text) {
       if (options.onEnd) options.onEnd();
       return;
     }
 
-    // Cancel any previous utterance
-    this.stop();
-
-    // Phonetically normalize Czech text (fixes "j e s čárkou", emojis, math, etc.)
     const spokenText = preprocessCzechForTTS(text);
     if (!spokenText) {
       if (options.onEnd) options.onEnd();
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(spokenText);
-    this.currentUtterance = utterance; // Prevent garbage collection bug in Chrome/Safari
+    const provider = this.getTTSProvider();
+    const openAIKey = this.getOpenAIApiKey();
+    const elevenLabsKey = this.getElevenLabsApiKey();
 
-    // Refresh voices if not yet cached
+    const useOpenAI = (provider === 'openai' || (provider === 'auto' && openAIKey)) && openAIKey;
+    const useElevenLabs = (provider === 'elevenlabs' || (provider === 'auto' && elevenLabsKey && !openAIKey)) && elevenLabsKey;
+
+    if (useOpenAI) {
+      try {
+        const voice = (typeof localStorage !== 'undefined' && localStorage.getItem('openai_tts_voice')) || 'nova';
+        const url = await fetchOpenAITTS(spokenText, openAIKey, voice);
+        this.playAudioUrl(url, options);
+        return;
+      } catch (err) {
+        console.warn('OpenAI TTS failed, falling back to Web Speech:', err);
+      }
+    } else if (useElevenLabs) {
+      try {
+        const voiceId = (typeof localStorage !== 'undefined' && localStorage.getItem('elevenlabs_voice_id')) || '21m00Tcm4TlvDq8ikWAM';
+        const url = await fetchElevenLabsTTS(spokenText, elevenLabsKey, voiceId);
+        this.playAudioUrl(url, options);
+        return;
+      } catch (err) {
+        console.warn('ElevenLabs TTS failed, falling back to Web Speech:', err);
+      }
+    }
+
+    // Default: Web Speech API with anti-robotic tuning
+    this.speakWithWebSpeech(spokenText, options);
+  }
+
+  speakWithWebSpeech(spokenText, options = {}) {
+    if (!this.synth) {
+      if (options.onEnd) options.onEnd();
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    this.currentUtterance = utterance;
+
     if (!this.czechVoice) {
       this.loadVoices();
     }
 
-    // Character gender & voice selection
     const femaleCharacters = ['eliska', 'viktorie', 'sofie', 'teacher'];
     const isFemale = options.characterId && femaleCharacters.includes(options.characterId);
 
@@ -237,49 +399,52 @@ class SpeechEngine {
       utterance.lang = 'cs-CZ';
     }
 
-    // Character voice tuning defaults (natural, warm parameters without chipmunk distortion)
+    // Check if voice is male (like Microsoft Jakub)
+    const isMaleName = voiceToUse && /(jakub|jan|male|michal|josef|antonin)/i.test(voiceToUse.name || '');
+
+    // Anti-robotic tuning: NEVER pitch-up a male voice artificially (prevents demon chipmunk sound)
     let pitch = options.pitch ?? 1.0;
     let rate = options.rate ?? 1.0;
     let volume = options.volume ?? 1.0;
 
-    // Apply specific pupil profiles if characterId is given
     if (options.characterId) {
       switch (options.characterId) {
-        case 'eliska': // Šprtka - enthusiastic, cheerful, bright young voice
-          pitch = 1.14;
-          rate = 1.04;
+        case 'eliska':
+          pitch = isMaleName ? 1.0 : 1.10;
+          rate = 1.02;
           break;
-        case 'matyas': // Šašek - energetic, bouncy, playful
-          pitch = 1.08;
-          rate = 1.08;
+        case 'matyas':
+          pitch = 1.02;
+          rate = 1.06;
           break;
-        case 'ondra': // Spáč - calm, relaxed, drowsy
+        case 'ondra':
           pitch = 0.94;
           rate = 0.88;
           break;
-        case 'viktorie': // Rebelka - confident, spirited
-          pitch = 1.04;
+        case 'viktorie':
+          pitch = isMaleName ? 1.0 : 1.04;
           rate = 1.02;
           break;
-        case 'tomas': // Stydlín - gentle, polite, soft
-          pitch = 1.08;
+        case 'tomas':
+          pitch = isMaleName ? 0.98 : 1.04;
           rate = 0.94;
-          volume = 0.88;
+          volume = 0.9;
           break;
-        case 'filip': // Sportovec - fast, crisp
+        case 'filip':
           pitch = 0.98;
-          rate = 1.06;
+          rate = 1.05;
           break;
-        case 'sofie': // Umělkyně - melodic, sweet
-          pitch = 1.12;
+        case 'sofie':
+          pitch = isMaleName ? 1.0 : 1.08;
           rate = 0.96;
           break;
-        case 'kuba': // Hladovec - cheerful, round
+        case 'kuba':
           pitch = 0.96;
           rate = 0.96;
           break;
-        case 'teacher': // Paní učitelka - warm, articulate, maternal, gentle pacing for children
-          pitch = 1.03;
+        case 'teacher':
+          // Warm, gentle maternal speech: if male voice, keep natural 1.0 pitch so it's not distorted
+          pitch = isMaleName ? 1.0 : 1.02;
           rate = 0.94;
           volume = 1.0;
           break;
@@ -329,7 +494,6 @@ class SpeechEngine {
       }
     }, 4000);
 
-    // Workaround for Chrome/Safari pausing long speeches
     try {
       this.synth.speak(utterance);
     } catch (e) {
@@ -337,6 +501,46 @@ class SpeechEngine {
       handleFinish();
     }
   }
+}
+
+export async function testTTSPreview({ provider, apiKey, voiceId, openAIVoice, webVoiceUri, onStart, onEnd, onError }) {
+  const sample = 'Dobrý den děti! Vítám vás ve škole. Dnes se společně naučíme spoustu krásných věcí!';
+  speech.stop();
+  if (onStart) onStart();
+
+  if (provider === 'openai' && apiKey) {
+    try {
+      const url = await fetchOpenAITTS(sample, apiKey, openAIVoice || 'nova');
+      speech.playAudioUrl(url, { onEnd });
+      return;
+    } catch (e) {
+      if (onError) onError(e.message);
+      if (onEnd) onEnd();
+      return;
+    }
+  }
+
+  if (provider === 'elevenlabs' && apiKey) {
+    try {
+      const url = await fetchElevenLabsTTS(sample, apiKey, voiceId || '21m00Tcm4TlvDq8ikWAM');
+      speech.playAudioUrl(url, { onEnd });
+      return;
+    } catch (e) {
+      if (onError) onError(e.message);
+      if (onEnd) onEnd();
+      return;
+    }
+  }
+
+  // Web Speech preview
+  if (webVoiceUri && typeof localStorage !== 'undefined') {
+    localStorage.setItem('preferred_webspeech_voice', webVoiceUri);
+    speech.loadVoices();
+  }
+  speech.speak(sample, {
+    characterId: 'teacher',
+    onEnd
+  });
 }
 
 export const speech = new SpeechEngine();

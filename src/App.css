@@ -4214,3 +4214,23 @@
     padding: 4px 8px;
   }
 }
+
+.btn-play-voice-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1.5px solid #10B981;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-play-voice-preview:hover {
+  background: #D1FAE5;
+  transform: translateY(-1px);
+}

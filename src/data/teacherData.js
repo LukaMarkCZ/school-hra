@@ -184,15 +184,139 @@ export const TEACHER_QUESTIONS_BANK = [
 ];
 
 export const TEACHER_CALLOUT_PHRASES = [
-  '{name}, vidím, že se hlásíš! Pověz nám to!',
-  'Výborně, {name}, ty to víš? Posloucháme!',
-  '{name}, zvedáš ruku jako první, jaká je odpověď?',
-  'Pověz nám to, {name}, jsem zvědavá na tvou odpověď!'
+  '{name}, vidím tvou zvednutou ručičku! Pověz nám to!',
+  'Výborně, {name}, hlásíš se jako blesk! Jaká je odpověď?',
+  '{name}, copak tě napadlo? Všichni tě pozorně posloucháme!',
+  'Pověz nám to, {name}, jsem moc zvědavá na tvou odpověď!',
+  '{name}, ty to víš? Sem s tím, posloucháme!',
+  'Tak povídej, {name}, celá třída napjatě čeká!',
+  '{name}, zvedáš ruku první, copak to podle tebe je?',
+  'Výborně, {name}, slyšíme tě, řekni nám to!',
+  '{name}, dneska máš ale skvělý postřeh! Jak to tedy je?',
+  'Šup sem s odpovědí, {name}, moc se těším, co nám povíš!',
+  '{name}, pověz nám svůj nápad, určitě to víš!',
+  'Ano, {name}, copak je správná odpověď?',
+  'Terezko, poslouchejme tě, copak si myslíš?',
+  '{name}, hlásíš se tak hezky! Pověz to celé třídě!',
+  'Skvěle, {name}, máš slovo, posloucháme!'
+];
+
+export const TEACHER_NEXT_QUESTION_PHRASES = [
+  'Pojďme na další hádanku!',
+  'Mám pro vás další zajímavou otázku:',
+  'Výborně! Podíváme se na tabuli na další úkol:',
+  'A kdopak z vás ví tohle?',
+  'Schválně, kdo z vás to uhodne:',
+  'Otočíme list v sešitě a zkusíme něco nového:',
+  'Jste připraveni na další otázku? Tady je:',
+  'Poslouchejte pozorně další hádanku:',
+  'Výborně, dáme si další otázku z tabule:',
+  'Kdopak ví odpověď na tohle?',
+  'Mám tu pro vás další oříšek k rozlousknutí:',
+  'Pozor na další zapeklitou otázku:'
 ];
 
 export const TEACHER_PRAISE_LINES = [
-  'Výborně, {name}! To je přesně ono!',
-  'Nádhera, {name}! Za takovou krásnou odpověď si zasloužíš hvězdičku!',
-  'Skvělá práce, {name}! Jsi moc šikovná!',
-  'Přesně tak! Třída tě pozorně poslouchala a všichni ti tleskají!'
+  'Výborně, {name}! {praise}',
+  'Páni, {name}, ty jsi dneska ale hlavička! {praise}',
+  'Nádherná odpověď, {name}! Mám z tebe obrovskou radost!',
+  'To je přesně ono, {name}! {praise}',
+  'Skvělá práce, {name}! Takhle pohotovou odpověď jsem ani nečekala!',
+  'Jednička s hvězdičkou pro {name}! Přesně tak to je!',
+  'Bravo, {name}! Celá třída ti tleská!',
+  'To je trefa do černého, {name}! {praise}',
+  'Úžasné, {name}! Jsi neuvěřitelně šikovná!',
+  'Páni, {name}, ty to sypeš z rukávu! {praise}',
+  'Správně, {name}! Je vidět, jak krásně dáváš pozor!',
+  'Přesně tak, {name}! Za tohle si zasloužíš velkou zlatou hvězdičku!',
+  'Klobouk dolů, {name}, odpověděla jsi naprosto bravurně!',
+  'Krásná a bystrá odpověď, {name}! Mám z tebe velkou pedagogickou radost!'
 ];
+
+export const TEACHER_CORRECTION_LINES = [
+  'Ale kdepak, {name}! „{answer}“ to není. Správná odpověď je {mainAnswer}. Nevadí, společně se to naučíme!',
+  'Jejda, {name}, to ses trošku spletla. Je to {mainAnswer}, ne {answer}. Zkusíme další otázku!',
+  'Kdepak, beruško, to není správně. Správně je {mainAnswer}. Příště to určitě trefíš!',
+  'Ale copak to slyším, {name}? „{answer}“ nám tady nesedí. Je to přece {mainAnswer}! Nevadí, chybami se člověk učí!',
+  'Těsně vedle, {name}! „{answer}“ to sice není, správně je {mainAnswer}, ale cením, že ses nebála zkusit to!',
+  'No toto, {name}! Kde se v téhle otázce vzalo „{answer}“? Správně je {mainAnswer}. Dáme si další otázku!',
+  'Hmm, to byl zajímavý nápad, {name}, ale ve skutečnosti je to {mainAnswer}. Příště to vyjde!',
+  'Kdepak, {name}, tudy cesta nevede. Správně je {mainAnswer}. Zkusíme další hádanku!',
+  'Ach kdepak, {name}, to se ti popletlo. Je to přece {mainAnswer}! Zkusíme další úkol!',
+  'Neboj se, {name}, žádný učený z nebe nespadl. Správně je {mainAnswer}. Příště se to povede!'
+];
+
+export const TEACHER_DONTKNOW_LINES = [
+  'To vůbec nevadí, {name}, nikdo neví všechno! Správná odpověď je {mainAnswer}. Příště už si to budeš pamatovat!',
+  'Nevadí, {name}, to se stane každému! Je to {mainAnswer}. Hlavu vzhůru, jdeme na další otázku!',
+  'Žádný strach, {name}! Správná odpověď je {mainAnswer}. Od toho jsme ve škole, abychom se to společně naučili!',
+  'Vůbec nic se neděje, {name}. Správně je {mainAnswer}. Podíváme se na další zajímavý úkol!',
+  'To je v pořádku, {name}! Dneska ses dozvěděla, že je to {mainAnswer}. A o tom škola je!'
+];
+
+// Anti-repetition state trackers
+let lastCalloutIdx = -1;
+let lastNextQIdx = -1;
+let lastPraiseIdx = -1;
+let lastCorrectionIdx = -1;
+let lastDontKnowIdx = -1;
+
+function pickNonRepeating(arr, lastIdx) {
+  if (!arr || arr.length === 0) return { item: '', idx: -1 };
+  if (arr.length === 1) return { item: arr[0], idx: 0 };
+  let idx = Math.floor(Math.random() * arr.length);
+  if (idx === lastIdx) {
+    idx = (idx + 1) % arr.length;
+  }
+  return { item: arr[idx], idx };
+}
+
+export function toCzechVocative(name) {
+  if (!name) return 'beruško';
+  const n = name.trim();
+  if (n.toLowerCase().endsWith('ka')) return n.slice(0, -1) + 'o';
+  if (n.toLowerCase().endsWith('a')) return n.slice(0, -1) + 'o';
+  return n;
+}
+
+export function getNonRepeatingCallout(playerName = 'Terezka') {
+  const { item, idx } = pickNonRepeating(TEACHER_CALLOUT_PHRASES, lastCalloutIdx);
+  lastCalloutIdx = idx;
+  const voc = toCzechVocative(playerName);
+  return item.replace(/{name}/g, voc);
+}
+
+export function getNonRepeatingNextQuestionIntro() {
+  const { item, idx } = pickNonRepeating(TEACHER_NEXT_QUESTION_PHRASES, lastNextQIdx);
+  lastNextQIdx = idx;
+  return item;
+}
+
+export function getNonRepeatingPraise(playerName = 'Terezka', specificPraise = '') {
+  const { item, idx } = pickNonRepeating(TEACHER_PRAISE_LINES, lastPraiseIdx);
+  lastPraiseIdx = idx;
+  const voc = toCzechVocative(playerName);
+  const praisePart = specificPraise ? specificPraise : 'Mám z tebe velkou radost!';
+  return item.replace(/{name}/g, voc).replace(/{praise}/g, praisePart).trim();
+}
+
+export function getNonRepeatingCorrection(playerName = 'Terezka', playerAnswer = '', mainAnswer = '') {
+  const { item, idx } = pickNonRepeating(TEACHER_CORRECTION_LINES, lastCorrectionIdx);
+  lastCorrectionIdx = idx;
+  const voc = toCzechVocative(playerName);
+  return item
+    .replace(/{name}/g, voc)
+    .replace(/{answer}/g, playerAnswer.trim() || 'tohle')
+    .replace(/{mainAnswer}/g, mainAnswer || 'jinak')
+    .trim();
+}
+
+export function getNonRepeatingDontKnow(playerName = 'Terezka', mainAnswer = '') {
+  const { item, idx } = pickNonRepeating(TEACHER_DONTKNOW_LINES, lastDontKnowIdx);
+  lastDontKnowIdx = idx;
+  const voc = toCzechVocative(playerName);
+  return item
+    .replace(/{name}/g, voc)
+    .replace(/{mainAnswer}/g, mainAnswer || 'jinak')
+    .trim();
+}

@@ -18,7 +18,11 @@ import {
   RefreshCw,
   AlertTriangle
 } from 'lucide-react';
-import { TEACHER_QUESTIONS_BANK, TEACHER_CALLOUT_PHRASES } from '../data/teacherData';
+import {
+  TEACHER_QUESTIONS_BANK,
+  getNonRepeatingCallout,
+  getNonRepeatingNextQuestionIntro
+} from '../data/teacherData';
 import { askTeacherAQuestion, evaluateStudentAnswer } from '../services/aiEngine';
 import { speech } from '../services/speechEngine';
 import { sounds } from '../services/soundEffects';
@@ -65,13 +69,17 @@ export function StudentPerspectiveView({
     localStorage.setItem('school_player_grades', JSON.stringify(playerGrades));
   }, [playerGrades]);
 
-  // Initial greeting speech
+  // Initial greeting speech with natural warm welcome
   useEffect(() => {
     const timer = setTimeout(() => {
-      speakTeacher(
-        `Ahoj ${playerName}! Vítej ve své lavici. Mám pro tebe první otázku: ${currentQuestion.question}`
-      );
-    }, 400);
+      const greetings = [
+        `Krásný den, ${playerName}! Vítej ve své školní lavici. Mám tu pro tebe první otázku: ${currentQuestion.question}`,
+        `Ahoj ${playerName}! Dneska máme skvělý den na učení. Podívej se na tabuli na první otázku: ${currentQuestion.question}`,
+        `Vítám tě ve třídě, ${playerName}! Posaď se pohodlně. Začneme touto otázkou: ${currentQuestion.question}`
+      ];
+      const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+      speakTeacher(greeting);
+    }, 450);
     return () => clearTimeout(timer);
   }, []);
 
@@ -86,7 +94,7 @@ export function StudentPerspectiveView({
     });
   };
 
-  // 1. Next question from teacher
+  // 1. Next question from teacher - non-repeating natural transitions
   const handleNextTeacherQuestion = () => {
     sounds.playPop();
     const nextIdx = (currentQuestionIndex + 1) % TEACHER_QUESTIONS_BANK.length;
@@ -104,10 +112,11 @@ export function StudentPerspectiveView({
     if (hasMatyas) newRaising.push('matyas');
     setRaisingClassmates(newRaising);
 
-    speakTeacher(`Tady je nová otázka: ${nextQ.question}`);
+    const intro = getNonRepeatingNextQuestionIntro();
+    speakTeacher(`${intro} ${nextQ.question}`);
   };
 
-  // 2. Player raises hand
+  // 2. Player raises hand - non-repeating lively teacher callouts
   const handleRaiseHand = () => {
     sounds.playPop();
     setIsPlayerRaisingHand(true);
@@ -116,8 +125,7 @@ export function StudentPerspectiveView({
     setTimeout(() => {
       sounds.playDingDong();
       setIsPlayerCalledOn(true);
-      const calloutTemplate = TEACHER_CALLOUT_PHRASES[Math.floor(Math.random() * TEACHER_CALLOUT_PHRASES.length)];
-      const phrase = calloutTemplate.replace('{name}', playerName);
+      const phrase = getNonRepeatingCallout(playerName);
       speakTeacher(phrase);
     }, 600);
   };

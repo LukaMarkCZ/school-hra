@@ -1,7 +1,12 @@
 // AI Engine for Classroom Interactions
 // Supports Gemini API (1.5-flash & 2.0-flash) + Deeply Knowledgeable Offline Engine
 import { maybePersonalizeTeacherName } from '../data/studentsData';
-import { TEACHER_QUESTIONS_BANK } from '../data/teacherData';
+import {
+  TEACHER_QUESTIONS_BANK,
+  getNonRepeatingPraise,
+  getNonRepeatingCorrection,
+  getNonRepeatingDontKnow
+} from '../data/teacherData';
 
 export function getActiveApiKey() {
   const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
@@ -10,17 +15,63 @@ export function getActiveApiKey() {
   return (envKey || localKey || '').trim();
 }
 
+export function getActiveOpenAIApiKey() {
+  const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_OPENAI_API_KEY) ||
+                 (typeof process !== 'undefined' && process.env?.VITE_OPENAI_API_KEY);
+  const localKey = typeof localStorage !== 'undefined' ? localStorage.getItem('openai_api_key') : '';
+  return (envKey || localKey || '').trim();
+}
+
 export function isAIConfigured() {
-  return !!getActiveApiKey();
+  return !!(getActiveApiKey() || getActiveOpenAIApiKey());
 }
 
 // List of preferred models in order of priority (using Google AI Studio's active models)
 const GEMINI_MODELS = [
-  'gemini-flash-lite-latest',
-  'gemini-flash-latest',
-  'gemini-3.1-flash-lite',
-  'gemini-3.5-flash-lite'
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-2.5-flash',
+  'gemini-flash-latest'
 ];
+
+export async function testOpenAIAPI(key) {
+  if (!key || !key.trim()) {
+    return { ok: false, error: 'Klíč je prázdný.' };
+  }
+
+  const endpoint = 'https://api.openai.com/v1/chat/completions';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 7500);
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${key.trim()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'Odpověz jedním slovem "Ahoj" v češtině.' }],
+        max_tokens: 15
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = await res.json();
+      const reply = data?.choices?.[0]?.message?.content?.trim() || 'Ahoj!';
+      return { ok: true, message: `Připojeno k OpenAI! Model: gpt-4o-mini. Odpověď: „${reply}“` };
+    } else {
+      const errData = await res.json().catch(() => null);
+      return { ok: false, error: errData?.error?.message || `Chyba HTTP ${res.status}` };
+    }
+  } catch (err) {
+    return { ok: false, error: err.name === 'AbortError' ? 'Vypršel časový limit (7s).' : (err.message || 'Chyba sítě.') };
+  }
+}
 
 export const STUDENT_ALIASES = {
   eliska: [
@@ -1041,12 +1092,12 @@ export async function evaluateStudentAnswer(questionInput, playerAnswer, playerN
   const mainAnswer = (correctAnswers && correctAnswers[0]) || '';
   const isDeterministicCorrect = checkAnswerCorrectness(playerAnswer, correctAnswers);
 
-  const apiKey = getActiveApiKey();
-  if (apiKey) {
-    for (const model of GEMINI_MODELS) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const prompt = `Jsi laskavá a moudrá paní učitelka ve 3. třídě základní školy.
+  // 1. Try OpenAI (GPT-4o-mini) if configured
+  const openAIKey = getActiveOpenAIApiKey();
+  if (openAIKey) {
+    try {
+      const endpoint = 'https://api.openai.com/v1/chat/completions';
+      const prompt = `Jsi velmi laskavá, vřelá a přirozená paní učitelka Marie na 1. stupni české základní školy.
 Položila jsi třídě tuto otázku:
 "${questionText}"
 Správné odpovědi jsou například: ${correctAnswers.join(', ') || 'podle skutečnosti'}
@@ -1056,13 +1107,81 @@ Tvůj žáček, 8letá holčička ${playerName}, ti právě odpověděla:
 
 DŮLEŽITÁ PEDAGOGICKÁ PRAVIDLA:
 1. Posuď přísně, zda je odpověď fakticky správná.
-2. Pokud je odpověď NESMYSLNÁ, ŠPATNÁ, JINÉ ČÍSLO, JINÉ ZVÍŘE nebo dítě řeklo "nevím" (např. na otázku kolik nohou má pavouk řeklo "traktor", "deset" nebo "nevím"):
+2. Pokud je odpověď NESMYSLNÁ, ŠPATNÁ, JINÉ ČÍSLO, JINÉ ZVÍŘE nebo dítě řeklo "nevím":
    - Dítěti NESMÍŠ dát hvězdičku ani jedničku!
    - Nastav isCorrect: false a grade: null.
-   - Napiš laskavé, povzbudivé vysvětlení s oslovením "${playerName}", kde jí prozradíš správnou odpověď, např.: "Ale kdepak, ${playerName}! Pavouci mají osm nohou, ne ${playerAnswer}. Nevadí, společně se to naučíme!"
+   - Napiš laskavé, povzbudivé, lidsky pestré vysvětlení s oslovením "${playerName}", kde jí prozradíš správnou odpověď. Vyhni se robotickému opakování klišé!
 3. Pokud je odpověď SPRÁVNÁ:
    - Nastav isCorrect: true a grade: "star".
-   - Napiš nadšenou pochvalu s oslovením "${playerName}".
+   - Napiš nadšenou, pestrou a vřelou pochvalu s oslovením "${playerName}".
+
+Odpověz POUZE jako validní JSON:
+{
+  "evaluationText": "Text hodnocení paní učitelky...",
+  "grade": "star" | null,
+  "isCorrect": true | false
+}`;
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7500);
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.85
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data?.choices?.[0]?.message?.content || '';
+        const parsed = JSON.parse(content);
+        if (parsed && parsed.evaluationText) {
+          if (correctAnswers.length > 0 && !isDeterministicCorrect && parsed.isCorrect) {
+            parsed.isCorrect = false;
+            parsed.grade = null;
+            parsed.evaluationText = getNonRepeatingCorrection(playerName, playerAnswer, mainAnswer);
+          }
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn('OpenAI answer evaluation failed, trying Gemini/fallback:', err);
+    }
+  }
+
+  // 2. Try Google Gemini if configured
+  const apiKey = getActiveApiKey();
+  if (apiKey) {
+    for (const model of GEMINI_MODELS) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const prompt = `Jsi velmi laskavá, vřelá a přirozená paní učitelka Marie na 1. stupni základní školy.
+Položila jsi třídě tuto otázku:
+"${questionText}"
+Správné odpovědi jsou například: ${correctAnswers.join(', ') || 'podle skutečnosti'}
+
+Tvůj žáček, 8letá holčička ${playerName}, ti právě odpověděla:
+"${playerAnswer}"
+
+DŮLEŽITÁ PEDAGOGICKÁ PRAVIDLA:
+1. Posuď přísně, zda je odpověď fakticky správná.
+2. Pokud je odpověď NESMYSLNÁ, ŠPATNÁ, JINÉ ČÍSLO, JINÉ ZVÍŘE nebo dítě řeklo "nevím":
+   - Dítěti NESMÍŠ dát hvězdičku ani jedničku!
+   - Nastav isCorrect: false a grade: null.
+   - Napiš laskavé, povzbudivé, lidsky pestré vysvětlení s oslovením "${playerName}", kde jí prozradíš správnou odpověď. Vyhni se robotickému opakování klišé!
+3. Pokud je odpověď SPRÁVNÁ:
+   - Nastav isCorrect: true a grade: "star".
+   - Napiš nadšenou, pestrou a vřelou pochvalu s oslovením "${playerName}".
 
 Odpověz POUZE jako validní JSON:
 {
@@ -1094,7 +1213,7 @@ Odpověz POUZE jako validní JSON:
             if (correctAnswers.length > 0 && !isDeterministicCorrect && parsed.isCorrect) {
               parsed.isCorrect = false;
               parsed.grade = null;
-              parsed.evaluationText = `Ale kdepak, ${playerName}! „${playerAnswer}“ to není. Správná odpověď je ${mainAnswer}. Nevadí, příště to zkusíme znovu!`;
+              parsed.evaluationText = getNonRepeatingCorrection(playerName, playerAnswer, mainAnswer);
             }
             return parsed;
           }
@@ -1105,17 +1224,13 @@ Odpověz POUZE jako validní JSON:
     }
   }
 
-  // Deterministic offline evaluation
+  // 3. Deterministic offline evaluation with non-repeating rich maternal personality
   const cleaned = stripAnswerFillers(playerAnswer);
   const isDontKnow = !cleaned || cleaned === 'nevim' || cleaned === 'netusim';
 
   if (isDeterministicCorrect) {
-    const praiseText = teacherPraise
-      ? `Výborně, ${playerName}! ${teacherPraise}`
-      : `Skvěle, ${playerName}! To je přesně správná odpověď, mám z tebe velkou radost!`;
-
     return {
-      evaluationText: praiseText,
+      evaluationText: getNonRepeatingPraise(playerName, teacherPraise),
       grade: 'star',
       isCorrect: true
     };
@@ -1124,14 +1239,14 @@ Odpověz POUZE jako validní JSON:
   // Incorrect or nonsense answer
   if (isDontKnow) {
     return {
-      evaluationText: `Nevadí, ${playerName}, to se stane každému! Správná odpověď je ${mainAnswer || 'trochu jiná'}. Příště to určitě budeš vědět!`,
+      evaluationText: getNonRepeatingDontKnow(playerName, mainAnswer),
       grade: null,
       isCorrect: false
     };
   }
 
   return {
-    evaluationText: `Ale kdepak, ${playerName}! „${playerAnswer.trim()}“ to není. Správná odpověď je ${mainAnswer || 'jiná'}. Nevadí, společně se to naučíme!`,
+    evaluationText: getNonRepeatingCorrection(playerName, playerAnswer, mainAnswer),
     grade: null,
     isCorrect: false
   };
