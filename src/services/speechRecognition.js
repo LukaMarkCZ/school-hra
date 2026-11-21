@@ -104,8 +104,11 @@ class SpeechRecognitionService {
         }
 
         // Reset silence timer: auto-submit when child pauses
-        const isMobileDevice = typeof navigator !== 'undefined' && /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
-        const silenceDelay = isMobileDevice ? 1600 : 2200;
+        const isMobileDevice = typeof navigator !== 'undefined' && (
+          /iPad|iPhone|iPod|Android|webOS|BlackBerry/i.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+        );
+        const silenceDelay = isMobileDevice ? 1300 : 1800;
         if (this.silenceTimer) clearTimeout(this.silenceTimer);
         this.silenceTimer = setTimeout(() => {
           this.submitCurrentTranscript();

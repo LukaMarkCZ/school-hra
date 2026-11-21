@@ -1,6 +1,7 @@
 // AI Engine for Classroom Interactions
 // Supports Gemini API (1.5-flash & 2.0-flash) + Deeply Knowledgeable Offline Engine
 import { maybePersonalizeTeacherName } from '../data/studentsData';
+import { TEACHER_QUESTIONS_BANK } from '../data/teacherData';
 
 export function getActiveApiKey() {
   const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
@@ -937,35 +938,136 @@ Odpověz POUZE jako prostý text odpovědi bez uvozovek a bez formátování.`;
   return `To je moc hezká a chytrá otázka, ${playerName}! Jsem moc ráda, že tě to zajímá. V přírodovědě si o tom povíme ještě mnohem víc!`;
 }
 
+const CZECH_NUMBER_MAP = {
+  '0': ['nula'],
+  '1': ['jedna', 'jeden'],
+  '2': ['dva', 'dve'],
+  '3': ['tri'],
+  '4': ['ctyri'],
+  '5': ['pet'],
+  '6': ['sest'],
+  '7': ['sedm'],
+  '8': ['osm'],
+  '9': ['devet'],
+  '10': ['deset'],
+  '25': ['dvacet pet', 'dvacetpet'],
+  '27': ['dvacet sedm', 'dvacetsedm'],
+  '45': ['ctyricet pet', 'ctyricetpet'],
+  '100': ['sto']
+};
+
+export function stripAnswerFillers(s) {
+  let norm = (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  norm = norm.replace(/\b(myslim si ze|myslim ze|myslim si|myslim|je to|jsou to|bude to|asi|mozna|podle me|podle mne|rekla bych ze|rekl bych ze|odpoved je|pani ucitelko|pane uciteli|prosim|ze|a)\b/g, ' ');
+  return norm.replace(/\s+/g, ' ').trim();
+}
+
+export function checkAnswerCorrectness(playerAnswer, correctAnswersList) {
+  const cleaned = stripAnswerFillers(playerAnswer);
+  if (!cleaned) return false;
+
+  // Explicit non-answers
+  const dontKnow = ['nevim', 'netusim', 'nevimto', 'nevim to', 'nemam poneti', 'nevim nic'];
+  if (dontKnow.includes(cleaned)) return false;
+
+  const validSet = new Set();
+  for (const ca of (correctAnswersList || [])) {
+    const caClean = stripAnswerFillers(ca);
+    if (caClean) validSet.add(caClean);
+    for (const [digit, words] of Object.entries(CZECH_NUMBER_MAP)) {
+      if (caClean === digit || words.includes(caClean)) {
+        validSet.add(digit);
+        words.forEach(w => validSet.add(w));
+      }
+    }
+  }
+
+  // Check flag colors special case
+  if (validSet.has('bila') || validSet.has('bila cervena modra')) {
+    const colors = ['bila', 'cervena', 'modra'];
+    const matched = colors.filter(c => cleaned.includes(c));
+    if (matched.length >= 2) return true;
+  }
+
+  // 1. Exact match or word boundary regex
+  for (const valid of validSet) {
+    if (cleaned === valid) return true;
+    const regex = new RegExp('(^|\\s)' + valid + '($|\\s)', 'i');
+    if (regex.test(cleaned)) return true;
+  }
+
+  // 2. Stem matching for longer words (e.g. tučňák -> tučňáci, karkulka -> karkulku, perník -> perníčky)
+  for (const valid of validSet) {
+    if (valid.length >= 4) {
+      const stem = valid.slice(0, Math.min(valid.length - 1, 6));
+      if (cleaned.includes(stem)) return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Paní učitelka evaluates the child's answer to her question
+ * Strictly verifies correctness: never awards stars or praise for nonsense or wrong answers!
  */
-export async function evaluateStudentAnswer(teacherQuestion, playerAnswer, playerName = 'Terezka') {
-  const apiKey = getActiveApiKey();
+export async function evaluateStudentAnswer(questionInput, playerAnswer, playerName = 'Terezka') {
+  let questionText = '';
+  let correctAnswers = [];
+  let teacherPraise = '';
 
+  if (typeof questionInput === 'object' && questionInput !== null) {
+    questionText = questionInput.question || '';
+    correctAnswers = questionInput.correctAnswers || [];
+    teacherPraise = questionInput.praise || '';
+  } else {
+    questionText = String(questionInput || '');
+    const found = TEACHER_QUESTIONS_BANK.find(q =>
+      normalizeText(q.question) === normalizeText(questionText) ||
+      (q.question && questionText && q.question.toLowerCase().includes(questionText.toLowerCase().slice(0, 15)))
+    );
+    if (found) {
+      correctAnswers = found.correctAnswers || [];
+      teacherPraise = found.praise || '';
+    }
+  }
+
+  const mainAnswer = (correctAnswers && correctAnswers[0]) || '';
+  const isDeterministicCorrect = checkAnswerCorrectness(playerAnswer, correctAnswers);
+
+  const apiKey = getActiveApiKey();
   if (apiKey) {
     for (const model of GEMINI_MODELS) {
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const prompt = `Jsi laskavá a povzbuzující paní učitelka ve 3. třídě.
+        const prompt = `Jsi laskavá a moudrá paní učitelka ve 3. třídě základní školy.
 Položila jsi třídě tuto otázku:
-"${teacherQuestion}"
+"${questionText}"
+Správné odpovědi jsou například: ${correctAnswers.join(', ') || 'podle skutečnosti'}
 
 Tvůj žáček, 8letá holčička ${playerName}, ti právě odpověděla:
 "${playerAnswer}"
 
-Vyhodnoť její odpověď s velkou láskou a povzbuzením:
-1. Posuď, zda je odpověď fakticky správná nebo zda se dítě trefilo.
-2. Napiš 1 až 2 laskavé věty hodnocení s oslovením "${playerName}" (např. "Výborně, ${playerName}! To je přesně ono..." nebo "To byl moc hezký pokus, ${playerName}! Ve skutečnosti je to...").
-3. Urči známku:
-   - "star" pokud byla odpověď úžasná, kreativní nebo naprosto přesná
-   - 1 pokud byla správná
-   - 2 pokud byla částečná nebo roztomilý pokus
+DŮLEŽITÁ PEDAGOGICKÁ PRAVIDLA:
+1. Posuď přísně, zda je odpověď fakticky správná.
+2. Pokud je odpověď NESMYSLNÁ, ŠPATNÁ, JINÉ ČÍSLO, JINÉ ZVÍŘE nebo dítě řeklo "nevím" (např. na otázku kolik nohou má pavouk řeklo "traktor", "deset" nebo "nevím"):
+   - Dítěti NESMÍŠ dát hvězdičku ani jedničku!
+   - Nastav isCorrect: false a grade: null.
+   - Napiš laskavé, povzbudivé vysvětlení s oslovením "${playerName}", kde jí prozradíš správnou odpověď, např.: "Ale kdepak, ${playerName}! Pavouci mají osm nohou, ne ${playerAnswer}. Nevadí, společně se to naučíme!"
+3. Pokud je odpověď SPRÁVNÁ:
+   - Nastav isCorrect: true a grade: "star".
+   - Napiš nadšenou pochvalu s oslovením "${playerName}".
 
 Odpověz POUZE jako validní JSON:
 {
   "evaluationText": "Text hodnocení paní učitelky...",
-  "grade": "star" | 1 | 2,
+  "grade": "star" | null,
   "isCorrect": true | false
 }`;
 
@@ -988,6 +1090,12 @@ Odpověz POUZE jako validní JSON:
           const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
           const parsed = JSON.parse(raw);
           if (parsed && parsed.evaluationText) {
+            // Safety guard: if our deterministic validator says FALSE, but AI mistakenly said TRUE, enforce FALSE!
+            if (correctAnswers.length > 0 && !isDeterministicCorrect && parsed.isCorrect) {
+              parsed.isCorrect = false;
+              parsed.grade = null;
+              parsed.evaluationText = `Ale kdepak, ${playerName}! „${playerAnswer}“ to není. Správná odpověď je ${mainAnswer}. Nevadí, příště to zkusíme znovu!`;
+            }
             return parsed;
           }
         }
@@ -997,22 +1105,35 @@ Odpověz POUZE jako validní JSON:
     }
   }
 
-  // Offline fallback evaluation
-  const pNorm = normalizeText(playerAnswer);
-  const isAffirmative = pNorm.length > 1;
+  // Deterministic offline evaluation
+  const cleaned = stripAnswerFillers(playerAnswer);
+  const isDontKnow = !cleaned || cleaned === 'nevim' || cleaned === 'netusim';
 
-  if (isAffirmative) {
+  if (isDeterministicCorrect) {
+    const praiseText = teacherPraise
+      ? `Výborně, ${playerName}! ${teacherPraise}`
+      : `Skvěle, ${playerName}! To je přesně správná odpověď, mám z tebe velkou radost!`;
+
     return {
-      evaluationText: `Výborně, ${playerName}! To je moc hezká a šikovná odpověď, mám z tebe velkou radost!`,
+      evaluationText: praiseText,
       grade: 'star',
       isCorrect: true
     };
   }
 
+  // Incorrect or nonsense answer
+  if (isDontKnow) {
+    return {
+      evaluationText: `Nevadí, ${playerName}, to se stane každému! Správná odpověď je ${mainAnswer || 'trochu jiná'}. Příště to určitě budeš vědět!`,
+      grade: null,
+      isCorrect: false
+    };
+  }
+
   return {
-    evaluationText: `To byl hezký pokus, ${playerName}! Příště to společně doladíme k dokonalosti!`,
-    grade: 1,
-    isCorrect: true
+    evaluationText: `Ale kdepak, ${playerName}! „${playerAnswer.trim()}“ to není. Správná odpověď je ${mainAnswer || 'jiná'}. Nevadí, společně se to naučíme!`,
+    grade: null,
+    isCorrect: false
   };
 }
 

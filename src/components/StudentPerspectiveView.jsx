@@ -131,31 +131,43 @@ export function StudentPerspectiveView({
     speech.speak(answerText, {
       characterId: 'eliska', // high pitch cute child voice
       onEnd: async () => {
-        // Teacher evaluates the answer
-        const evalResult = await evaluateStudentAnswer(currentQuestion.question, answerText, playerName);
+        // Teacher evaluates the answer with strict factual validation
+        const evalResult = await evaluateStudentAnswer(currentQuestion, answerText, playerName);
 
-        if (evalResult.isCorrect || evalResult.grade === 'star' || evalResult.grade === 1) {
+        const now = new Date();
+        const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        if (evalResult.isCorrect) {
           try {
             confetti({ particleCount: 75, spread: 80, origin: { y: 0.5 } });
           } catch { /* ignore */ }
           sounds.playPraiseSparkle();
+
+          // Add grade to player's gradebook ONLY on factually correct answer
+          const newGradeItem = {
+            type: evalResult.grade || 'star',
+            label: evalResult.grade === 'star' ? '⭐ Zlatá hvězdička s pochvalou' : '1 - Výborně!',
+            answer: answerText,
+            question: currentQuestion.question,
+            time: timeStr
+          };
+          setPlayerGrades(prev => [newGradeItem, ...prev]);
         } else {
+          // Play gentle uh-oh sound for incorrect answer or nonsense
           sounds.playUhOh();
+
+          // Record as effort/try in gradebook (does NOT award stars or ones)
+          const newGradeItem = {
+            type: 'try',
+            label: '💡 Pokus o odpověď',
+            answer: answerText,
+            question: currentQuestion.question,
+            time: timeStr
+          };
+          setPlayerGrades(prev => [newGradeItem, ...prev]);
         }
 
-        // Add grade to player's gradebook
-        const now = new Date();
-        const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-        const newGradeItem = {
-          type: evalResult.grade || 'star',
-          label: evalResult.grade === 'star' ? '⭐ Zlatá hvězdička s pochvalou' : '1 - Výborně!',
-          answer: answerText,
-          question: currentQuestion.question,
-          time: timeStr
-        };
-        setPlayerGrades(prev => [newGradeItem, ...prev]);
-
-        // Teacher delivers praise
+        // Teacher speaks the evaluation (praise or gentle maternal correction)
         speakTeacher(evalResult.evaluationText);
         setIsPlayerRaisingHand(false);
         setIsPlayerCalledOn(false);
@@ -699,6 +711,7 @@ export function StudentPerspectiveView({
 function PlayerAnswerModal({
   question,
   playerName,
+  initialAutoMic = true,
   onClose,
   onSubmitAnswer
 }) {
@@ -707,6 +720,7 @@ function PlayerAnswerModal({
   const [micLiveText, setMicLiveText] = useState('');
   const [micErrorMessage, setMicErrorMessage] = useState('');
   const textareaRef = useRef(null);
+  const autoStartedRef = useRef(false);
   const hasBrowserSpeech = speechRecognizer.isSupported();
 
   // Clean up mic on unmount
@@ -739,15 +753,18 @@ function PlayerAnswerModal({
         setMicStatus('idle');
         setMicLiveText('');
         if (finalText && finalText.trim()) {
-          setAnswerText(finalText.trim());
+          const clean = finalText.trim();
+          setAnswerText(clean);
           sounds.playMicSuccess();
+          // AUTOMATIC ZERO-CONFIRMATION SUBMIT: as soon as child stops talking, send immediately!
+          onSubmitAnswer(clean);
         }
       },
       onError: (err) => {
         console.warn('Student mic error:', err);
         setMicStatus('error');
         setMicErrorMessage(
-          'Mikrofon v prohlížeči je zablokován. Povolte přístup k mikrofonu v nastavení prohlížeče nebo zkontrolujte, zda je stránka otevřena přes HTTPS.'
+          'Mikrofon v prohlížeči je zablokován nebo není dostupný. Zkontrolujte povolení mikrofonu v nastavení prohlížeče.'
         );
       },
       onEnd: () => {
@@ -756,10 +773,21 @@ function PlayerAnswerModal({
     });
   };
 
+  // Auto-start listening on mount so child doesn't even need to click the mic!
+  useEffect(() => {
+    if (initialAutoMic && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      const timer = setTimeout(() => {
+        startListening();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [initialAutoMic]);
+
   const stopListening = () => {
     sounds.playPop();
+    // Flush current speech transcript and trigger onFinal -> auto sends!
     speechRecognizer.stopListening();
-    setMicStatus('idle');
   };
 
   const handleSend = (e) => {
@@ -799,7 +827,7 @@ function PlayerAnswerModal({
           </span>
         </div>
 
-        {/* 1. VOICE ANSWERING SECTION */}
+        {/* 1. VOICE ANSWERING SECTION - AUTOMATIC & ZERO CONFIRMATION */}
         <div className="voice-answering-wrapper">
           {isListening ? (
             <div className="voice-mic-active-card">
@@ -807,15 +835,16 @@ function PlayerAnswerModal({
                 <div className="flex items-center gap-2">
                   <span className="recording-live-dot" />
                   <span className="font-extrabold text-red-950 text-base md:text-lg">
-                    🔴 TEĎ MLUV! Poslouchám tě...
+                    🔴 POSLOUCHÁM TĚ... Mluv!
                   </span>
                 </div>
                 <button
                   type="button"
                   className="btn-mic-stop-action"
                   onClick={stopListening}
+                  title="Odeslat hned teď"
                 >
-                  ⏹️ Zastavit
+                  ⏹️ Odeslat hned
                 </button>
               </div>
 
@@ -824,19 +853,11 @@ function PlayerAnswerModal({
                 <p className="voice-heard-text">
                   {hasVoiceText ? `„${micLiveText}“` : 'Řekni svou odpověď nahlas...'}
                 </p>
+                <div className="text-xs text-emerald-800 font-extrabold flex items-center justify-center gap-1 mt-2.5">
+                  <span>✨</span>
+                  <span>Jakmile domluvíš, odpověď se sama automaticky odešle!</span>
+                </div>
               </div>
-
-              {/* Immediate send button when text is heard */}
-              {hasVoiceText && (
-                <button
-                  type="button"
-                  className="btn-voice-send-now animate-bounce-subtle mt-3"
-                  onClick={handleSend}
-                >
-                  <Check className="w-6 h-6 mr-2 stroke-[3]" />
-                  <span>Odeslat paní učitelce: „{micLiveText}“</span>
-                </button>
-              )}
             </div>
           ) : isStarting ? (
             <div className="voice-mic-starting-card">
@@ -862,24 +883,13 @@ function PlayerAnswerModal({
                 </div>
                 <div className="text-left ml-3 flex-1">
                   <span className="font-black text-white text-lg block">
-                    {answerText ? '🔄 Znovu odpovědět hlasem' : '🎙️ ŤUKNI A MLUV NAHLAS'}
+                    🎙️ ŤUKNI A MLUV NAHLAS
                   </span>
                   <span className="text-xs text-emerald-100 font-bold">
-                    Odpověz paní učitelce svým hlasem do mobilu
+                    Odpověď se po domluvení sama odešle paní učitelce
                   </span>
                 </div>
               </button>
-
-              {answerText && (
-                <button
-                  type="button"
-                  className="btn-voice-send-now animate-bounce-subtle"
-                  onClick={handleSend}
-                >
-                  <Check className="w-6 h-6 mr-2 stroke-[3]" />
-                  <span>Odeslat paní učitelce: „{answerText}“</span>
-                </button>
-              )}
             </div>
           )}
 
@@ -897,17 +907,18 @@ function PlayerAnswerModal({
           )}
         </div>
 
-        {/* Quick Answers Chips */}
+        {/* Quick Answers Chips - INSTANT SUBMIT ON TAP */}
         {question.correctAnswers && (
           <div className="quick-chips-section mt-2">
-            <span className="quick-chips-label">Nebo ťukni na správnou nápovědu:</span>
+            <span className="quick-chips-label">Nebo ťukni rovnou na odpověď:</span>
             <div className="quick-chips-row">
               <button
                 type="button"
                 className="chip-btn animate-pulse"
                 onClick={() => {
                   sounds.playPop();
-                  setAnswerText(question.correctAnswers[0]);
+                  speechRecognizer.cancelListening();
+                  onSubmitAnswer(question.correctAnswers[0]);
                 }}
               >
                 ✨ {question.correctAnswers[0]}
@@ -922,7 +933,7 @@ function PlayerAnswerModal({
             rows={2}
             value={answerText}
             onChange={e => setAnswerText(e.target.value)}
-            placeholder={`Zde se píše odpověď... Např. „${question.correctAnswers ? question.correctAnswers[0] : 'Moje odpověď'}“`}
+            placeholder={`Nebo můžeš napsat odpověď sem... (např. „${question.correctAnswers ? question.correctAnswers[0] : 'Moje odpověď'}“)`}
             className="question-textarea"
           />
 
