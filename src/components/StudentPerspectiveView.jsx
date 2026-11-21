@@ -378,9 +378,10 @@ export function StudentPerspectiveView({
               {/* Left arm holding pointing stick towards the chalkboard */}
               <path d="M 48 145 Q 28 175 42 195 L 50 190 Q 38 174 56 150 Z" fill="#4338CA" />
               <circle cx="44" cy="196" r="8" fill="url(#teacherSkin)" />
-              {/* Wooden pointer directed to board */}
-              <line x1="44" y1="196" x2="12" y2="122" stroke="url(#pointerWood)" strokeWidth="4" strokeLinecap="round" />
-              <circle cx="12" cy="122" r="3.5" fill="#FCD34D" />
+              {/* Wooden pointer directed to board with golden star */}
+              <line x1="44" y1="196" x2="14" y2="124" stroke="url(#pointerWood)" strokeWidth="4.5" strokeLinecap="round" />
+              <circle cx="14" cy="124" r="5" fill="#F59E0B" />
+              <polygon points="14,116 16,121 21,121 17,125 18,130 14,127 10,130 11,125 7,121 12,121" fill="#FDE047" stroke="#D97706" strokeWidth="0.8" />
 
               {/* Right arm friendly welcoming gesture */}
               <path d="M 112 145 Q 134 165 125 186 L 117 182 Q 124 165 106 148 Z" fill="#4338CA" />
@@ -602,6 +603,7 @@ export function StudentPerspectiveView({
                 type="button"
                 className={`btn-player-action btn-answer-action animate-bounce-subtle ${isPlayerCalledOn ? 'btn-called-active' : ''}`}
                 onClick={() => {
+                  sounds.playPop();
                   setAutoStartAnswerMic(true);
                   setIsAnswerModalOpen(true);
                 }}
@@ -621,7 +623,10 @@ export function StudentPerspectiveView({
               <button
                 type="button"
                 className="btn-player-action btn-ask-teacher-action"
-                onClick={() => setIsAskTeacherModalOpen(true)}
+                onClick={() => {
+                  sounds.playPop();
+                  setIsAskTeacherModalOpen(true);
+                }}
               >
                 <div className="action-circle bg-indigo-600">
                   <HelpCircle className="w-7 h-7 text-white" />
@@ -636,7 +641,10 @@ export function StudentPerspectiveView({
               <button
                 type="button"
                 className="btn-player-action btn-next-q-action"
-                onClick={handleNextTeacherQuestion}
+                onClick={() => {
+                  sounds.playPop();
+                  handleNextTeacherQuestion();
+                }}
                 title="Paní učitelko, dejte nám další otázku!"
               >
                 <div className="action-circle bg-sky-600">

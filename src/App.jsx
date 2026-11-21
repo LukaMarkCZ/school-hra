@@ -68,9 +68,9 @@ export function App() {
   const [isQuickQuestionsOpen, setIsQuickQuestionsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Active Game Perspective: 'teacher' (Player is teacher) | 'student' (Player is student in desk)
+  // Active Game Perspective: 'student' (Player is student in desk) | 'teacher' (Player is teacher)
   const [gameMode, setGameMode] = useState(() => {
-    return localStorage.getItem('school_game_mode') || 'teacher';
+    return localStorage.getItem('school_game_mode') || 'student';
   });
 
   const [playerName, setPlayerName] = useState(() => {
