@@ -15,7 +15,12 @@ export function preprocessCzechForTTS(text) {
   // 1. Remove all emojis (⭐, 🍎, 🍕, etc.) so TTS doesn't read symbol names
   s = s.replace(/\p{Extended_Pictographic}/gu, '');
 
-  // 2. Expand common Czech abbreviations that synthesizers spell letter-by-letter
+  // 2. Strip quotation marks and typographical symbols that synthesizers read out loud
+  s = s.replace(/[„“”"«»]/g, '');
+  s = s.replace(/:\s+/g, ', '); // Convert colon to natural pause comma
+  s = s.replace(/[•–—]/g, ' ');
+
+  // 3. Expand common school units and abbreviations
   s = s.replace(/\batd\./gi, 'a tak dále');
   s = s.replace(/\bnapř\./gi, 'například');
   s = s.replace(/\bcca\b/gi, 'přibližně');
@@ -23,9 +28,22 @@ export function preprocessCzechForTTS(text) {
   s = s.replace(/\btzn\./gi, 'to znamená');
   s = s.replace(/\bapod\./gi, 'a podobně');
   s = s.replace(/\btzv\./gi, 'tak zvaně');
+  s = s.replace(/(\d+)\s*km\/h\b/gi, '$1 kilometrů v hodině');
+  s = s.replace(/(\d+)\s*km\b/gi, '$1 kilometrů');
+  s = s.replace(/(\d+)\s*kg\b/gi, '$1 kilogramů');
+  s = s.replace(/(\d+)\s*min\b/gi, '$1 minut');
+  s = s.replace(/(\d+)\s*°C\b/gi, '$1 stupňů Celsia');
 
-  // 3. Fix isolated or repeated 'Jé', 'Jééé', 'Jéé' which TTS parses as letter J + letter "e s čárkou"
-  // Replaced by standard natural Czech interjection "Jéje" or "Jejda"
+  // 4. Ordinal numbers common in school context
+  s = s.replace(/\b1\.\s*tříd/gi, 'první tříd');
+  s = s.replace(/\b2\.\s*tříd/gi, 'druhé tříd');
+  s = s.replace(/\b3\.\s*tříd/gi, 'třetí tříd');
+  s = s.replace(/\b4\.\s*tříd/gi, 'čtvrté tříd');
+  s = s.replace(/\b5\.\s*tříd/gi, 'páté tříd');
+  s = s.replace(/\bza\s+1\b/gi, 'za jedna');
+  s = s.replace(/\bza\s+2\b/gi, 'za dva');
+
+  // 5. Fix isolated or repeated 'Jé', 'Jééé', 'Jéé' which TTS parses as letter J + letter "e s čárkou"
   s = s.replace(/(^|[^\p{L}])([Jj])é+(?=[^\p{L}]|$)/gu, (match, prefix, j) => {
     return prefix + (j === 'J' ? 'Jéje' : 'jéje');
   });
@@ -33,7 +51,7 @@ export function preprocessCzechForTTS(text) {
     return prefix + (j === 'J' ? 'Jejda' : 'jejda');
   });
 
-  // 4. Common pupil interjections with elongated vowels
+  // 6. Common pupil interjections with elongated vowels
   s = s.replace(/(^|[^\p{L}])[Jj]up[ií]+(?=[^\p{L}]|$)/giu, '$1Jupí');
   s = s.replace(/(^|[^\p{L}])[Gg][oó]+[ll]+(?=[^\p{L}]|$)/giu, '$1Gól');
   s = s.replace(/(^|[^\p{L}])[Mm]ň[aá]+m(?=[^\p{L}]|$)/giu, '$1Mňam');
@@ -43,23 +61,27 @@ export function preprocessCzechForTTS(text) {
   s = s.replace(/(^|[^\p{L}])[Ee]{3,}(?=[^\p{L}]|$)/giu, '$1É');
   s = s.replace(/(^|[^\p{L}])[Hh]ur[aá]+(?=[^\p{L}]|$)/giu, '$1Hurá');
 
-  // 5. Yawning / sleepy sounds
+  // 7. Yawning / sleepy sounds
   s = s.replace(/(^|[^\p{L}])[Zz]ív\.{1,3}/gu, '$1Ách jo... ');
 
-  // 6. Reduce any other 3+ repeated identical letters to 1 (e.g. supeeer -> super)
+  // 8. Reduce 3+ repeated identical letters to 1
   s = s.replace(/([\p{L}])\1{2,}/gu, '$1');
 
-  // 7. Math expressions to fluent Czech spoken words
+  // 9. Math expressions to fluent Czech spoken words
   s = s.replace(/(\d+)\s*\+\s*(\d+)/g, '$1 plus $2');
   s = s.replace(/(\d+)\s*-\s*(\d+)/g, '$1 mínus $2');
   s = s.replace(/(\d+)\s*[*xX•]\s*(\d+)/g, '$1 krát $2');
   s = s.replace(/(\d+)\s*[\/:]\s*(\d+)/g, '$1 děleno $2');
   s = s.replace(/=\s*(\d+)/g, 'rovná se $1');
 
-  // 8. Natural cadence: convert awkward long ellipsis (...) to natural comma pause
+  // 10. Natural prosody: expand numbers in common questions
+  s = s.replace(/\b5\s*krát\s*5\b/gi, 'pět krát pět');
+  s = s.replace(/\b12\s*plus\s*15\b/gi, 'dvanáct plus patnáct');
+
+  // 11. Natural cadence: convert long ellipsis (...) to gentle comma pause
   s = s.replace(/\.{3,}/g, ', ');
 
-  // 9. Clean up multiple punctuation and excess whitespace
+  // 12. Clean up multiple punctuation and excess whitespace
   s = s.replace(/,\s*,/g, ',');
   s = s.replace(/\s+/g, ' ').trim();
 
@@ -100,12 +122,15 @@ class SpeechEngine {
       let score = 0;
       const name = (v.name || '').toLowerCase();
       if (name.includes('natural')) score += 100;
-      if (name.includes('neural')) score += 90;
-      if (name.includes('enhanced') || name.includes('premium')) score += 80;
-      if (name.includes('online')) score += 40;
-      if (name.includes('google')) score += 35;
-      if (name.includes('zuzana') || name.includes('jakub') || name.includes('vlasta') || name.includes('jan')) score += 20;
-      if (v.lang === 'cs-CZ') score += 10;
+      if (name.includes('neural')) score += 95;
+      if (name.includes('enhanced') || name.includes('premium')) score += 90;
+      if (name.includes('siri')) score += 85;
+      if (name.includes('online')) score += 50;
+      if (name.includes('google')) score += 40;
+      if (name.includes('zuzana')) score += 30;
+      if (name.includes('jakub') || name.includes('vlasta') || name.includes('jan')) score += 25;
+      if (v.lang === 'cs-CZ') score += 15;
+      if (v.default) score += 5;
       return score;
     };
 
@@ -149,6 +174,10 @@ class SpeechEngine {
   }
 
   stop() {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
     if (!this.synth) return;
     try {
       this.synth.cancel();
@@ -208,7 +237,7 @@ class SpeechEngine {
       utterance.lang = 'cs-CZ';
     }
 
-    // Character voice tuning defaults (balanced natural ranges)
+    // Character voice tuning defaults (natural, warm parameters without chipmunk distortion)
     let pitch = options.pitch ?? 1.0;
     let rate = options.rate ?? 1.0;
     let volume = options.volume ?? 1.0;
@@ -216,42 +245,43 @@ class SpeechEngine {
     // Apply specific pupil profiles if characterId is given
     if (options.characterId) {
       switch (options.characterId) {
-        case 'eliska': // Šprtka - enthusiastic, quick, higher pitch
-          pitch = 1.25;
-          rate = 1.1;
+        case 'eliska': // Šprtka - enthusiastic, cheerful, bright young voice
+          pitch = 1.14;
+          rate = 1.04;
           break;
         case 'matyas': // Šašek - energetic, bouncy, playful
+          pitch = 1.08;
+          rate = 1.08;
+          break;
+        case 'ondra': // Spáč - calm, relaxed, drowsy
+          pitch = 0.94;
+          rate = 0.88;
+          break;
+        case 'viktorie': // Rebelka - confident, spirited
+          pitch = 1.04;
+          rate = 1.02;
+          break;
+        case 'tomas': // Stydlín - gentle, polite, soft
+          pitch = 1.08;
+          rate = 0.94;
+          volume = 0.88;
+          break;
+        case 'filip': // Sportovec - fast, crisp
+          pitch = 0.98;
+          rate = 1.06;
+          break;
+        case 'sofie': // Umělkyně - melodic, sweet
           pitch = 1.12;
-          rate = 1.18;
+          rate = 0.96;
           break;
-        case 'ondra': // Spáč - slow, drowsy, low pitch
-          pitch = 0.88;
-          rate = 0.85;
-          break;
-        case 'viktorie': // Rebelka - cool, lively, bold
-          pitch = 1.05;
-          rate = 1.05;
-          break;
-        case 'tomas': // Stydlín - shy, soft, gentle
-          pitch = 1.18;
-          rate = 0.92;
-          volume = 0.85;
-          break;
-        case 'filip': // Sportovec - fast, punchy, sporty
+        case 'kuba': // Hladovec - cheerful, round
           pitch = 0.96;
-          rate = 1.16;
-          break;
-        case 'sofie': // Umělkyně - dreamy, melodic, creative
-          pitch = 1.22;
           rate = 0.96;
           break;
-        case 'kuba': // Hladovec - cheerful, round tone
-          pitch = 0.92;
-          rate = 0.96;
-          break;
-        case 'teacher': // Paní učitelka - clear, warm, friendly
-          pitch = 1.05;
-          rate = 1.0;
+        case 'teacher': // Paní učitelka - warm, articulate, maternal, gentle pacing for children
+          pitch = 1.03;
+          rate = 0.94;
+          volume = 1.0;
           break;
         default:
           pitch = 1.0;
@@ -272,6 +302,10 @@ class SpeechEngine {
     };
 
     const handleFinish = () => {
+      if (this.keepAliveInterval) {
+        clearInterval(this.keepAliveInterval);
+        this.keepAliveInterval = null;
+      }
       this.isSpeaking = false;
       this.currentUtterance = null;
       if (this.onSpeechStateChange) {
@@ -285,6 +319,15 @@ class SpeechEngine {
       console.warn('Speech error:', err);
       handleFinish();
     };
+
+    // Keep-alive guard for mobile Safari / Chrome on long sentences
+    if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
+    this.keepAliveInterval = setInterval(() => {
+      if (this.isSpeaking && this.synth && !this.synth.paused) {
+        this.synth.pause();
+        this.synth.resume();
+      }
+    }, 4000);
 
     // Workaround for Chrome/Safari pausing long speeches
     try {

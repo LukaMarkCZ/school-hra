@@ -327,6 +327,62 @@ class SoundEngine {
       osc.stop(t + time + dur + 0.04);
     });
   }
+
+  // Soft crystalline marimba chime before teacher speaks
+  playTeacherIntro() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [
+      { freq: 880.00, time: 0, dur: 0.12 },     // A5
+      { freq: 1318.51, time: 0.09, dur: 0.22 }  // E6
+    ];
+
+    notes.forEach(({ freq, time, dur }) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + time);
+
+      gain.gain.setValueAtTime(0.12, t + time);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + time + dur);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(t + time);
+      osc.stop(t + time + dur + 0.03);
+    });
+  }
+
+  // Magical sparkling cascade for praise / gold stars
+  playPraiseSparkle() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const t = this.ctx.currentTime;
+    const freqs = [523.25, 659.25, 783.99, 987.77, 1046.50, 1318.51]; // C5, E5, G5, B5, C6, E6
+
+    freqs.forEach((freq, idx) => {
+      const startTime = t + idx * 0.07;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0.18, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.5);
+    });
+  }
 }
 
 export const sounds = new SoundEngine();

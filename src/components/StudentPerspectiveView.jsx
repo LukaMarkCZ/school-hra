@@ -79,6 +79,7 @@ export function StudentPerspectiveView({
   const speakTeacher = (text) => {
     setTeacherSpeech(text);
     setIsTeacherSpeaking(true);
+    sounds.playTeacherIntro();
     speech.speak(text, {
       characterId: 'teacher',
       onEnd: () => setIsTeacherSpeaking(false)
@@ -135,9 +136,9 @@ export function StudentPerspectiveView({
 
         if (evalResult.isCorrect || evalResult.grade === 'star' || evalResult.grade === 1) {
           try {
-            confetti({ particleCount: 65, spread: 70, origin: { y: 0.5 } });
+            confetti({ particleCount: 75, spread: 80, origin: { y: 0.5 } });
           } catch { /* ignore */ }
-          sounds.playCheer();
+          sounds.playPraiseSparkle();
         } else {
           sounds.playUhOh();
         }
@@ -232,6 +233,55 @@ export function StudentPerspectiveView({
 
       {/* Main Classroom Perspective Canvas */}
       <main className="classroom-perspective-stage">
+        {/* 1. Background Scenery: Window with Sunshine & Outdoors */}
+        <div className="classroom-window-scenery">
+          <div className="window-arch-frame">
+            <div className="window-sky-view">
+              <div className="sky-sun-glow" />
+              <div className="sky-cloud cloud-drift-1" />
+              <div className="sky-cloud cloud-drift-2" />
+              <div className="tree-leaves-sway" />
+            </div>
+            <div className="window-pane-grid" />
+            <div className="window-sunbeam-floor" />
+          </div>
+        </div>
+
+        {/* 2. Right Wall Decorations: Clock, Bunting Garland & Posters */}
+        <div className="classroom-wall-decorations">
+          <div className="school-wall-clock" title="Školní hodiny">
+            <div className="clock-rim">
+              <div className="clock-hand-hour" />
+              <div className="clock-hand-minute" />
+              <div className="clock-center-pin" />
+            </div>
+          </div>
+          <div className="school-poster alphabet-poster">
+            <span className="poster-title">🔤 Abeceda</span>
+            <span className="poster-text">A B C Č D E F G</span>
+          </div>
+          <div className="school-poster map-poster">
+            <span className="poster-title">🇨🇿 Naše vlast</span>
+            <span className="poster-badge">Praha • Brno</span>
+          </div>
+        </div>
+
+        {/* 3. Bunting flags garland above chalkboard */}
+        <div className="chalkboard-bunting-garland">
+          <span className="bunting-flag flag-red" />
+          <span className="bunting-flag flag-yellow" />
+          <span className="bunting-flag flag-blue" />
+          <span className="bunting-flag flag-green" />
+          <span className="bunting-flag flag-pink" />
+          <span className="bunting-flag flag-orange" />
+          <span className="bunting-flag flag-purple" />
+        </div>
+
+        {/* 4. Isometric 3D Parquet Wood Floor */}
+        <div className="classroom-perspective-floor">
+          <div className="floor-wood-planks" />
+        </div>
+
         {/* The Big Classroom Blackboard at the front */}
         <div className="perspective-chalkboard">
           <div className="chalkboard-frame">
@@ -264,15 +314,34 @@ export function StudentPerspectiveView({
         <div className="teacher-character-area">
           {/* Teacher's Active Speech Bubble */}
           <div className={`teacher-speech-bubble-box ${isTeacherSpeaking ? 'speaking-pulse' : ''}`}>
-            <div className="teacher-speech-avatar-badge">
-              <span>👩‍🏫 Paní učitelka:</span>
+            <div className="teacher-speech-header-row">
+              <div className="teacher-speech-avatar-badge">
+                <span>👩‍🏫 Paní učitelka:</span>
+              </div>
+              <button
+                type="button"
+                className="btn-replay-teacher-speech"
+                onClick={() => speakTeacher(teacherSpeech)}
+                title="Přehrát hlas paní učitelky znovu"
+              >
+                <Volume2 className="w-3.5 h-3.5 text-indigo-600 mr-1" />
+                <span>Zopakovat</span>
+              </button>
             </div>
             <p className="teacher-speech-bubble-text">{teacherSpeech}</p>
+            {isTeacherSpeaking && (
+              <div className="teacher-audio-equalizer">
+                <span className="eq-bar bar-1" />
+                <span className="eq-bar bar-2" />
+                <span className="eq-bar bar-3" />
+                <span className="eq-bar bar-4" />
+              </div>
+            )}
             <div className="teacher-bubble-tail" />
           </div>
 
           {/* Teacher SVG Avatar */}
-          <div className="teacher-svg-container">
+          <div className={`teacher-svg-container ${isTeacherSpeaking ? 'teacher-talking-body' : 'teacher-idle-body'}`}>
             <svg viewBox="0 0 160 220" className="teacher-svg">
               <defs>
                 <linearGradient id="teacherBlouse" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -287,26 +356,34 @@ export function StudentPerspectiveView({
                   <stop offset="0%" stopColor="#FDEDE2" />
                   <stop offset="100%" stopColor="#F5D0BA" />
                 </linearGradient>
+                <linearGradient id="pointerWood" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#D97706" />
+                  <stop offset="100%" stopColor="#92400E" />
+                </linearGradient>
               </defs>
+
+              {/* Floor Shadow */}
+              <ellipse cx="80" cy="216" rx="46" ry="7" fill="rgba(0,0,0,0.18)" />
 
               {/* Body / Blouse */}
               <path
-                d="M 50 140 Q 80 135 110 140 L 125 220 L 35 220 Z"
+                d="M 50 140 Q 80 135 110 140 L 126 216 L 34 216 Z"
                 fill="url(#teacherBlouse)"
               />
-              {/* White collar */}
-              <polygon points="80,140 68,160 80,172 92,160" fill="#FFFFFF" />
-              {/* Red necklace pendant */}
-              <circle cx="80" cy="180" r="5" fill="#EF4444" />
+              {/* White Peter Pan Collar */}
+              <polygon points="80,140 66,160 80,172 94,160" fill="#FFFFFF" />
+              {/* Elegant necklace with ruby jewel */}
+              <circle cx="80" cy="180" r="5" fill="#EF4444" stroke="#B91C1C" strokeWidth="1" />
 
-              {/* Left arm holding pointer / chalk */}
-              <path d="M 48 145 Q 30 175 42 195 L 50 190 Q 40 175 56 150 Z" fill="#4338CA" />
+              {/* Left arm holding pointing stick towards the chalkboard */}
+              <path d="M 48 145 Q 28 175 42 195 L 50 190 Q 38 174 56 150 Z" fill="#4338CA" />
               <circle cx="44" cy="196" r="8" fill="url(#teacherSkin)" />
-              {/* Wooden pointer */}
-              <line x1="44" y1="196" x2="15" y2="130" stroke="#B45309" strokeWidth="3.5" strokeLinecap="round" />
+              {/* Wooden pointer directed to board */}
+              <line x1="44" y1="196" x2="12" y2="122" stroke="url(#pointerWood)" strokeWidth="4" strokeLinecap="round" />
+              <circle cx="12" cy="122" r="3.5" fill="#FCD34D" />
 
-              {/* Right arm friendly gesture */}
-              <path d="M 112 145 Q 132 165 125 185 L 117 182 Q 122 165 106 148 Z" fill="#4338CA" />
+              {/* Right arm friendly welcoming gesture */}
+              <path d="M 112 145 Q 134 165 125 186 L 117 182 Q 124 165 106 148 Z" fill="#4338CA" />
               <circle cx="123" cy="188" r="8" fill="url(#teacherSkin)" />
 
               {/* Neck */}
@@ -315,11 +392,12 @@ export function StudentPerspectiveView({
               {/* Head */}
               <ellipse cx="80" cy="85" rx="34" ry="38" fill="url(#teacherSkin)" />
 
-              {/* Hair bun on top */}
-              <circle cx="80" cy="40" r="22" fill="url(#teacherHair)" />
-              <ellipse cx="80" cy="44" rx="14" ry="8" fill="#A16207" />
+              {/* Hair bun on top with red clip */}
+              <circle cx="80" cy="40" r="23" fill="url(#teacherHair)" />
+              <ellipse cx="80" cy="44" rx="15" ry="9" fill="#A16207" />
+              <rect x="70" y="38" width="20" height="4" rx="2" fill="#EF4444" />
 
-              {/* Hair strands around face */}
+              {/* Hair strands framing face */}
               <path
                 d="M 46 80 Q 46 48 80 48 Q 114 48 114 80 Q 102 60 80 62 Q 58 60 46 80 Z"
                 fill="url(#teacherHair)"
@@ -327,35 +405,38 @@ export function StudentPerspectiveView({
               <path d="M 46 80 Q 42 110 50 120 Q 52 100 52 85 Z" fill="url(#teacherHair)" />
               <path d="M 114 80 Q 118 110 110 120 Q 108 100 108 85 Z" fill="url(#teacherHair)" />
 
-              {/* Cheeks */}
-              <ellipse cx="60" cy="95" rx="6" ry="4" fill="#FDA4AF" opacity="0.6" />
-              <ellipse cx="100" cy="95" rx="6" ry="4" fill="#FDA4AF" opacity="0.6" />
+              {/* Blushing Cheeks */}
+              <ellipse cx="58" cy="95" rx="7" ry="4.5" fill="#FDA4AF" opacity="0.65" />
+              <ellipse cx="102" cy="95" rx="7" ry="4.5" fill="#FDA4AF" opacity="0.65" />
 
-              {/* Kind Eyes */}
-              <ellipse cx="64" cy="82" rx="4.5" ry="5.5" fill="#1E293B" />
-              <circle cx="62.5" cy="80" r="1.8" fill="#FFFFFF" />
-              <ellipse cx="96" cy="82" rx="4.5" ry="5.5" fill="#1E293B" />
-              <circle cx="94.5" cy="80" r="1.8" fill="#FFFFFF" />
+              {/* Sparkling Kind Eyes */}
+              <ellipse cx="64" cy="82" rx="5" ry="6" fill="#1E293B" className="teacher-eye" />
+              <circle cx="62" cy="80" r="2" fill="#FFFFFF" />
+              <circle cx="65.5" cy="83.5" r="0.9" fill="#FFFFFF" />
 
-              {/* Eyebrows */}
-              <path d="M 58 73 Q 64 69 71 73" stroke="#451A03" strokeWidth="2" strokeLinecap="round" fill="none" />
-              <path d="M 89 73 Q 96 69 102 73" stroke="#451A03" strokeWidth="2" strokeLinecap="round" fill="none" />
+              <ellipse cx="96" cy="82" rx="5" ry="6" fill="#1E293B" className="teacher-eye" />
+              <circle cx="94" cy="80" r="2" fill="#FFFFFF" />
+              <circle cx="97.5" cy="83.5" r="0.9" fill="#FFFFFF" />
 
-              {/* Glasses */}
-              <circle cx="64" cy="83" r="12" stroke="#DC2626" strokeWidth="2.2" fill="none" />
-              <circle cx="96" cy="83" r="12" stroke="#DC2626" strokeWidth="2.2" fill="none" />
-              <line x1="76" y1="83" x2="84" y2="83" stroke="#DC2626" strokeWidth="2.2" />
+              {/* Friendly Eyebrows */}
+              <path d="M 57 73 Q 64 68 72 73" stroke="#451A03" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+              <path d="M 88 73 Q 96 68 103 73" stroke="#451A03" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+
+              {/* Red Stylish Glasses with Glass Light Reflection */}
+              <circle cx="64" cy="83" r="13" stroke="#DC2626" strokeWidth="2.5" fill="rgba(255,255,255,0.12)" />
+              <path d="M 55 76 L 68 88" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="96" cy="83" r="13" stroke="#DC2626" strokeWidth="2.5" fill="rgba(255,255,255,0.12)" />
+              <path d="M 87 76 L 100 88" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="77" y1="83" x2="83" y2="83" stroke="#DC2626" strokeWidth="2.5" />
 
               {/* Nose */}
-              <path d="M 80 87 Q 82 92 80 94" stroke="#D97706" strokeWidth="2" strokeLinecap="round" fill="none" />
+              <path d="M 80 86 Q 83 91 80 94" stroke="#D97706" strokeWidth="2" strokeLinecap="round" fill="none" />
 
-              {/* Mouth */}
+              {/* Mouth with speech animation */}
               {isTeacherSpeaking ? (
-                // Speaking animated mouth
-                <ellipse cx="80" cy="106" rx="6" ry="7" fill="#DC2626" />
+                <path d="M 73 103 Q 80 114 87 103 Q 80 110 73 103 Z" fill="#DC2626" className="teacher-mouth-speaking" />
               ) : (
-                // Warm friendly smile
-                <path d="M 72 104 Q 80 112 88 104" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                <path d="M 72 104 Q 80 112 88 104" stroke="#DC2626" strokeWidth="2.8" strokeLinecap="round" fill="none" />
               )}
             </svg>
           </div>
@@ -363,28 +444,95 @@ export function StudentPerspectiveView({
 
         {/* Classmates sitting in front rows */}
         <div className="perspective-classmates-row">
-          {/* Eliška on the left */}
+          {/* Eliška on the left desk */}
           <div className="classmate-desk classmate-left">
             {raisingClassmates.includes('eliska') && (
               <div className="classmate-hand-raise animate-bounce-callout">
-                <span>🙋‍♀️ Já vím!</span>
+                <span>🙋‍♀️ Eliška: „Já to vím!“</span>
               </div>
             )}
-            <div className="classmate-head eliska-head">
-              <span className="classmate-name-tag">Eliška (Šprtka)</span>
+            <div className="classmate-character-svg-box">
+              <svg viewBox="0 0 100 110" className="classmate-svg">
+                <defs>
+                  <linearGradient id="eliskaCardigan" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#F472B6" />
+                    <stop offset="100%" stopColor="#DB2777" />
+                  </linearGradient>
+                  <linearGradient id="eliskaHair" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#FDE047" />
+                    <stop offset="100%" stopColor="#CA8A04" />
+                  </linearGradient>
+                </defs>
+                {/* Desk Edge */}
+                <rect x="0" y="78" width="100" height="32" rx="4" fill="#B45309" stroke="#78350F" strokeWidth="2" />
+                <rect x="10" y="82" width="30" height="20" rx="2" fill="#FEF3C7" stroke="#FDE68A" />
+                {/* Backpack hanging on chair */}
+                <rect x="74" y="65" width="22" height="30" rx="6" fill="#EC4899" />
+                <circle cx="85" cy="78" r="4" fill="#FCE7F3" />
+                {/* Body / Sweater */}
+                <path d="M 28 65 Q 50 60 72 65 L 76 90 L 24 90 Z" fill="url(#eliskaCardigan)" />
+                {/* Left braid */}
+                <path d="M 28 45 Q 18 65 24 80" stroke="url(#eliskaHair)" strokeWidth="6" strokeLinecap="round" fill="none" />
+                <circle cx="24" cy="80" r="3" fill="#EC4899" />
+                {/* Right braid (or raised arm!) */}
+                {raisingClassmates.includes('eliska') ? (
+                  <g className="arm-waving">
+                    <line x1="68" y1="65" x2="82" y2="25" stroke="url(#eliskaCardigan)" strokeWidth="8" strokeLinecap="round" />
+                    <circle cx="82" cy="22" r="6" fill="#FCE7F3" />
+                  </g>
+                ) : (
+                  <path d="M 72 45 Q 82 65 76 80" stroke="url(#eliskaHair)" strokeWidth="6" strokeLinecap="round" fill="none" />
+                )}
+                {/* Head from behind */}
+                <circle cx="50" cy="42" r="22" fill="url(#eliskaHair)" />
+                <ellipse cx="50" cy="34" rx="14" ry="8" fill="#FACC15" />
+                <span className="classmate-desk-name">Eliška</span>
+              </svg>
             </div>
+            <span className="classmate-name-tag">Eliška (Šprtka)</span>
           </div>
 
-          {/* Matyáš in center-right */}
+          {/* Matyáš in center-right desk */}
           <div className="classmate-desk classmate-right">
             {raisingClassmates.includes('matyas') && (
               <div className="classmate-hand-raise animate-bounce-callout">
-                <span>🙋‍♂️ Já! Hehe!</span>
+                <span>🙋‍♂️ Matyáš: „Já! Hehe!“</span>
               </div>
             )}
-            <div className="classmate-head matyas-head">
-              <span className="classmate-name-tag">Matyáš (Šašek)</span>
+            <div className="classmate-character-svg-box">
+              <svg viewBox="0 0 100 110" className="classmate-svg">
+                <defs>
+                  <linearGradient id="matyasHoodie" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FB923C" />
+                    <stop offset="100%" stopColor="#EA580C" />
+                  </linearGradient>
+                  <linearGradient id="matyasHair" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#78350F" />
+                    <stop offset="100%" stopColor="#451A03" />
+                  </linearGradient>
+                </defs>
+                {/* Desk Edge */}
+                <rect x="0" y="78" width="100" height="32" rx="4" fill="#B45309" stroke="#78350F" strokeWidth="2" />
+                <rect x="55" y="82" width="28" height="18" rx="2" fill="#E0F2FE" stroke="#BAE6FD" />
+                {/* Backpack hanging */}
+                <rect x="4" y="65" width="22" height="30" rx="6" fill="#10B981" />
+                {/* Body / Orange Hoodie */}
+                <path d="M 28 65 Q 50 60 72 65 L 76 90 L 24 90 Z" fill="url(#matyasHoodie)" />
+                {/* Hood details */}
+                <path d="M 38 60 Q 50 72 62 60" stroke="#C2410C" strokeWidth="3" fill="none" />
+                {/* Raised arm if raising hand */}
+                {raisingClassmates.includes('matyas') ? (
+                  <g className="arm-waving">
+                    <line x1="32" y1="65" x2="18" y2="25" stroke="url(#matyasHoodie)" strokeWidth="8" strokeLinecap="round" />
+                    <circle cx="18" cy="22" r="6" fill="#FED7AA" />
+                  </g>
+                ) : null}
+                {/* Spiky hair from behind */}
+                <circle cx="50" cy="42" r="22" fill="url(#matyasHair)" />
+                <polygon points="34,30 38,20 44,28 50,18 56,28 62,20 66,30" fill="url(#matyasHair)" />
+              </svg>
             </div>
+            <span className="classmate-name-tag">Matyáš (Šašek)</span>
           </div>
         </div>
 
@@ -401,19 +549,29 @@ export function StudentPerspectiveView({
         {/* Player's Desk in Foreground (Bottom Controls) */}
         <div className="player-student-desk">
           <div className="player-desk-surface">
+            {/* Stationery groove with crayons, ruler & eraser */}
+            <div className="desk-stationery-tray">
+              <span className="crayon crayon-red" title="Červená pastelka" />
+              <span className="crayon crayon-green" title="Zelená pastelka" />
+              <span className="crayon crayon-blue" title="Modrá pastelka" />
+              <span className="desk-ruler" title="Pravítko" />
+              <span className="desk-eraser" title="Guma">🧽</span>
+            </div>
+
             {/* Player's Open School Notebook */}
             <div className="player-notebook">
               <div className="notebook-header-line">
-                <span className="notebook-subject-tag">Český jazyk & Prvouka</span>
+                <span className="notebook-subject-tag">📘 Český jazyk & Prvouka</span>
                 <span className="notebook-owner-name">Sešit žáčka: {playerName}</span>
+                <span className="notebook-sticker">⭐ 1*</span>
               </div>
               <div className="notebook-ruled-lines">
                 <p className="notebook-handwritten-question">
-                  {currentQuestion.question}
+                  „{currentQuestion.question}“
                 </p>
                 {isPlayerCalledOn && (
                   <p className="notebook-callout-cue text-emerald-800 font-bold animate-pulse">
-                    ✨ Paní učitelka tě vyvolala! Stiskni tlačítko níže a odpověz!
+                    ✨ Paní učitelka tě vyvolala! Ťukni na mikrofon a odpověz!
                   </p>
                 )}
               </div>
@@ -429,13 +587,13 @@ export function StudentPerspectiveView({
                 disabled={isPlayerRaisingHand}
               >
                 <div className="action-circle bg-amber-500">
-                  <Hand className="w-8 h-8 text-white" />
+                  <Hand className="w-7 h-7 text-white" />
                 </div>
                 <div className="action-labels">
                   <span className="action-main-title">
                     {isPlayerCalledOn ? 'Vyvolána!' : isPlayerRaisingHand ? 'Hlásím se...' : 'Přihlásit se'}
                   </span>
-                  <span className="action-sub-title">Zvednout ruku</span>
+                  <span className="action-sub-title">✋ Zvednout ruku</span>
                 </div>
               </button>
 
@@ -449,13 +607,13 @@ export function StudentPerspectiveView({
                 }}
               >
                 <div className="action-circle bg-emerald-600">
-                  <Mic className="w-8 h-8 text-white" />
+                  <Mic className="w-7 h-7 text-white" />
                 </div>
                 <div className="action-labels">
                   <span className="action-main-title">
                     {isPlayerCalledOn ? 'Odpovědět hned!' : 'Odpovědět'}
                   </span>
-                  <span className="action-sub-title">🎙️ Hlasem do mikrofonu</span>
+                  <span className="action-sub-title">🎙️ Ťukni a mluv!</span>
                 </div>
               </button>
 
@@ -466,11 +624,11 @@ export function StudentPerspectiveView({
                 onClick={() => setIsAskTeacherModalOpen(true)}
               >
                 <div className="action-circle bg-indigo-600">
-                  <HelpCircle className="w-8 h-8 text-white" />
+                  <HelpCircle className="w-7 h-7 text-white" />
                 </div>
                 <div className="action-labels">
                   <span className="action-main-title">Zeptat se</span>
-                  <span className="action-sub-title">Hlasem nebo textem</span>
+                  <span className="action-sub-title">❓ Položit otázku</span>
                 </div>
               </button>
 
@@ -482,11 +640,11 @@ export function StudentPerspectiveView({
                 title="Paní učitelko, dejte nám další otázku!"
               >
                 <div className="action-circle bg-sky-600">
-                  <ArrowRight className="w-8 h-8 text-white" />
+                  <ArrowRight className="w-7 h-7 text-white" />
                 </div>
                 <div className="action-labels">
                   <span className="action-main-title">Další otázka</span>
-                  <span className="action-sub-title">Změnit téma</span>
+                  <span className="action-sub-title">➡️ Nové téma</span>
                 </div>
               </button>
             </div>

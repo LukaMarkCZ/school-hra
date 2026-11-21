@@ -2661,6 +2661,341 @@
   padding-top: 1rem;
 }
 
+/* ========================================================
+   CLASSROOM PERSPECTIVE SCENERY & WINDOW
+   ======================================================== */
+
+.classroom-window-scenery {
+  position: absolute;
+  top: 16px;
+  left: 24px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.window-arch-frame {
+  width: 140px;
+  height: 200px;
+  border-radius: 70px 70px 8px 8px;
+  background: #FFFFFF;
+  border: 7px solid #78350F;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), inset 0 0 10px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.window-sky-view {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #38BDF8 0%, #BAE6FD 60%, #FEF08A 100%);
+  overflow: hidden;
+}
+
+.sky-sun-glow {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FDE047 0%, #F59E0B 70%, rgba(245, 158, 11, 0) 100%);
+  filter: drop-shadow(0 0 10px #FDE047);
+  animation: sunPulse 3s infinite alternate ease-in-out;
+}
+
+@keyframes sunPulse {
+  0% { transform: scale(0.95); opacity: 0.85; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+
+.sky-cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.sky-cloud::before,
+.sky-cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+
+.cloud-drift-1 {
+  width: 44px;
+  height: 15px;
+  top: 42px;
+  left: -20px;
+  animation: cloudDrift1 20s infinite linear;
+}
+.cloud-drift-1::before {
+  width: 18px;
+  height: 18px;
+  top: -9px;
+  left: 7px;
+}
+.cloud-drift-1::after {
+  width: 14px;
+  height: 14px;
+  top: -5px;
+  left: 20px;
+}
+
+.cloud-drift-2 {
+  width: 36px;
+  height: 13px;
+  top: 76px;
+  left: 30px;
+  opacity: 0.85;
+  animation: cloudDrift2 26s infinite linear;
+}
+.cloud-drift-2::before {
+  width: 15px;
+  height: 15px;
+  top: -7px;
+  left: 6px;
+}
+
+@keyframes cloudDrift1 {
+  0% { transform: translateX(-35px); }
+  100% { transform: translateX(165px); }
+}
+
+@keyframes cloudDrift2 {
+  0% { transform: translateX(150px); }
+  100% { transform: translateX(-40px); }
+}
+
+.tree-leaves-sway {
+  position: absolute;
+  bottom: -6px;
+  left: -10px;
+  right: -10px;
+  height: 42px;
+  background: radial-gradient(circle at 30% 100%, #16A34A 0%, #15803D 60%, #14532D 100%);
+  border-radius: 50% 50% 0 0;
+  animation: treeSway 4s infinite alternate ease-in-out;
+  transform-origin: bottom center;
+}
+
+@keyframes treeSway {
+  0% { transform: rotate(-2.5deg); }
+  100% { transform: rotate(3deg); }
+}
+
+.window-pane-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.window-pane-grid::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: #78350F;
+}
+.window-pane-grid::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 5px;
+  background: #78350F;
+}
+
+.window-sunbeam-floor {
+  position: absolute;
+  top: 30px;
+  left: 60px;
+  width: 160px;
+  height: 280px;
+  background: linear-gradient(135deg, rgba(254, 240, 138, 0.28) 0%, rgba(254, 240, 138, 0) 70%);
+  transform: skewX(-25deg);
+  pointer-events: none;
+}
+
+/* ========================================================
+   WALL DECORATIONS: CLOCK, POSTERS, BUNTING GARLAND
+   ======================================================== */
+
+.classroom-wall-decorations {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.school-wall-clock {
+  width: 58px;
+  height: 58px;
+  background: #FFFFFF;
+  border: 5px solid #78350F;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clock-rim {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 50%;
+}
+
+.clock-center-pin {
+  width: 6px;
+  height: 6px;
+  background: #B45309;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.clock-hand-hour {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  width: 3px;
+  height: 15px;
+  background: #1E293B;
+  border-radius: 2px;
+  transform-origin: bottom center;
+  transform: translateX(-50%) rotate(75deg);
+}
+
+.clock-hand-minute {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  background: #EF4444;
+  border-radius: 2px;
+  transform-origin: bottom center;
+  animation: clockSweep 60s infinite linear;
+}
+
+@keyframes clockSweep {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+.school-poster {
+  background: #FFFBEB;
+  border: 2px solid #FDE68A;
+  border-radius: 8px;
+  padding: 5px 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: rotate(2deg);
+}
+
+.map-poster {
+  transform: rotate(-2deg);
+}
+
+.poster-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #78350F;
+}
+
+.poster-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #B45309;
+  letter-spacing: 0.5px;
+}
+
+.poster-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #1E3A8A;
+  background: #DBEAFE;
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-top: 2px;
+}
+
+/* Bunting Garland */
+.chalkboard-bunting-garland {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  position: relative;
+  z-index: 11;
+  margin-bottom: -10px;
+  pointer-events: none;
+}
+
+.bunting-flag {
+  width: 0;
+  height: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-top: 18px solid #EF4444;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  animation: flagFlutter 2.5s infinite alternate ease-in-out;
+  transform-origin: top center;
+}
+
+.bunting-flag:nth-child(even) {
+  animation-duration: 3.2s;
+}
+
+@keyframes flagFlutter {
+  0% { transform: rotate(-4deg); }
+  100% { transform: rotate(5deg); }
+}
+
+.flag-red { border-top-color: #EF4444; }
+.flag-yellow { border-top-color: #F59E0B; }
+.flag-blue { border-top-color: #3B82F6; }
+.flag-green { border-top-color: #10B981; }
+.flag-pink { border-top-color: #EC4899; }
+.flag-orange { border-top-color: #F97316; }
+.flag-purple { border-top-color: #8B5CF6; }
+
+/* Isometric Parquet Floor */
+.classroom-perspective-floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48%;
+  background: linear-gradient(180deg, #D97706 0%, #B45309 40%, #78350F 100%);
+  opacity: 0.35;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.floor-wood-planks {
+  width: 100%;
+  height: 100%;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 3px, transparent 3px, transparent 60px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0px, rgba(255, 255, 255, 0.08) 2px, transparent 2px, transparent 40px);
+}
+
 /* Chalkboard */
 .perspective-chalkboard {
   width: min(88%, 780px);
@@ -2748,7 +3083,7 @@
 /* Teacher Character Standing Center */
 .teacher-character-area {
   position: absolute;
-  top: 140px;
+  top: 135px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -2763,7 +3098,7 @@
   border-radius: 18px;
   padding: 10px 18px;
   box-shadow: 0 8px 24px rgba(79, 70, 229, 0.25);
-  max-width: 380px;
+  max-width: 420px;
   position: relative;
   margin-bottom: 8px;
   transition: transform 0.2s ease;
@@ -2778,11 +3113,38 @@
   to { transform: scale(1.03); border-color: #EC4899; }
 }
 
+.teacher-speech-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
 .teacher-speech-avatar-badge {
   font-weight: 800;
   color: #4338CA;
   font-size: 0.8rem;
-  margin-bottom: 2px;
+}
+
+.btn-replay-teacher-speech {
+  display: inline-flex;
+  align-items: center;
+  background: #EEF2FF;
+  border: 1.5px solid #C7D2FE;
+  border-radius: 9999px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4338CA;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-replay-teacher-speech:hover {
+  background: #E0E7FF;
+  border-color: #818CF8;
+  transform: translateY(-1px);
 }
 
 .teacher-speech-bubble-text {
@@ -2791,6 +3153,30 @@
   color: #1E293B;
   margin: 0;
   line-height: 1.35;
+}
+
+.teacher-audio-equalizer {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+  margin-top: 5px;
+}
+
+.eq-bar {
+  width: 3.5px;
+  border-radius: 2px;
+  background: #6366F1;
+}
+
+.eq-bar.bar-1 { animation: eqBounce 0.4s infinite alternate ease-in-out; }
+.eq-bar.bar-2 { animation: eqBounce 0.6s 0.15s infinite alternate ease-in-out; }
+.eq-bar.bar-3 { animation: eqBounce 0.5s 0.08s infinite alternate ease-in-out; }
+.eq-bar.bar-4 { animation: eqBounce 0.7s 0.2s infinite alternate ease-in-out; }
+
+@keyframes eqBounce {
+  0% { height: 3px; background: #818CF8; }
+  100% { height: 16px; background: #4F46E5; }
 }
 
 .teacher-bubble-tail {
@@ -2813,13 +3199,51 @@
 .teacher-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.18));
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.2));
+}
+
+/* Eye Blinking */
+.teacher-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: eyeBlink 4s infinite;
+}
+
+@keyframes eyeBlink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+/* Mouth Talking Animation */
+.teacher-mouth-speaking {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mouthTalk 0.22s infinite alternate ease-in-out;
+}
+
+@keyframes mouthTalk {
+  0% { transform: scaleY(0.9); }
+  100% { transform: scaleY(1.35) translateY(1px); }
+}
+
+/* Teacher idle breathing */
+.teacher-talking-body {
+  animation: teacherBreath 2s infinite ease-in-out;
+}
+
+.teacher-idle-body {
+  animation: teacherBreath 3.5s infinite ease-in-out;
+}
+
+@keyframes teacherBreath {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 /* Classmates in Rows */
 .perspective-classmates-row {
   position: absolute;
-  top: 260px;
+  top: 255px;
   width: 100%;
   max-width: 960px;
   display: flex;
@@ -2836,36 +3260,37 @@
   align-items: center;
 }
 
-.classmate-head {
-  width: 72px;
-  height: 60px;
-  border-radius: 36px 36px 16px 16px;
-  background: #FCD34D;
-  border: 3px solid #D97706;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+.classmate-character-svg-box {
+  width: 95px;
+  height: 105px;
+  position: relative;
 }
 
-.eliska-head {
-  background: #F472B6;
-  border-color: #DB2777;
+.classmate-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.16));
 }
 
-.matyas-head {
-  background: #FB923C;
-  border-color: #EA580C;
+.arm-waving {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: armWave 0.55s infinite alternate ease-in-out;
+}
+
+@keyframes armWave {
+  0% { transform: rotate(-7deg); }
+  100% { transform: rotate(12deg); }
 }
 
 .classmate-name-tag {
   font-size: 0.65rem;
   font-weight: 800;
   color: #FFFFFF;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1px 7px;
   border-radius: 8px;
-  margin-bottom: 4px;
+  margin-top: 2px;
 }
 
 .classmate-hand-raise {
@@ -2944,7 +3369,57 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
+}
+
+/* Stationery Tray on Student Desk */
+.desk-stationery-tray {
+  background: #5A2707;
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(255, 255, 255, 0.1);
+  border: 1px solid #78350F;
+}
+
+.crayon {
+  width: 32px;
+  height: 8px;
+  border-radius: 2px 6px 6px 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.crayon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 2px 0 0 2px;
+}
+
+.crayon-red { background: #EF4444; border: 1px solid #DC2626; }
+.crayon-green { background: #10B981; border: 1px solid #059669; }
+.crayon-blue { background: #3B82F6; border: 1px solid #2563EB; }
+
+.desk-ruler {
+  width: 52px;
+  height: 10px;
+  background: #FDE047;
+  border: 1.5px solid #CA8A04;
+  border-radius: 2px;
+  background-image: repeating-linear-gradient(90deg, #854D0E 0px, #854D0E 1px, transparent 1px, transparent 6px);
+}
+
+.desk-eraser {
+  font-size: 16px;
+  cursor: default;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
 .player-notebook {
@@ -2973,6 +3448,16 @@
 .notebook-owner-name {
   color: #B45309;
   font-weight: 800;
+}
+
+.notebook-sticker {
+  background: #FEF08A;
+  border: 1.5px solid #F59E0B;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #B45309;
 }
 
 .notebook-ruled-lines {
@@ -3090,12 +3575,25 @@
 /* Responsive tweaks for smaller screens & tablet portrait */
 @media (max-width: 950px) {
   .player-notebook { display: none; }
+  .classroom-window-scenery { opacity: 0.7; transform: scale(0.85); top: 5px; left: 10px; }
+  .classroom-wall-decorations { opacity: 0.7; transform: scale(0.85); top: 5px; right: 10px; }
   .teacher-character-area { top: 110px; }
   .perspective-chalkboard { width: 94%; }
   .btn-player-action { padding: 8px 12px; min-width: 110px; }
   .action-circle { width: 42px; height: 42px; }
   .action-main-title { font-size: 0.85rem; }
   .player-student-desk { height: 160px; }
+}
+
+@media (max-width: 640px) {
+  .classroom-window-scenery, .classroom-wall-decorations { display: none; }
+  .desk-stationery-tray { display: none; }
+  .perspective-classmates-row { padding: 0 10px; }
+  .classmate-character-svg-box { width: 75px; height: 85px; }
+  .player-actions-toolbar { gap: 6px; }
+  .btn-player-action { padding: 6px 10px; min-width: 80px; }
+  .action-circle { width: 36px; height: 36px; }
+  .action-sub-title { display: none; }
 }
 
 /* Floating Mode Switcher Button in Teacher View */
